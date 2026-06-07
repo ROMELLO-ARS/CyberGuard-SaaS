@@ -1,0 +1,100 @@
+import { useState } from "react";
+import {
+  Shield,
+  LayoutDashboard,
+  Siren,
+  FolderOpen,
+  Target,
+  BarChart3,
+  ScrollText,
+  CreditCard,
+  Settings,
+} from "lucide-react";
+
+import Dashboard from "./pages/Dashboard";
+import ThreatQueue from "./pages/ThreatQueue";
+import Incidents from "./pages/Incidents";
+import MitreCenter from "./pages/MitreCenter";
+import Executive from "./pages/Executive";
+import AuditTimeline from "./pages/AuditTimeline";
+import Subscription from "./pages/Subscription";
+import SettingsPage from "./pages/Settings";
+
+const navItems = [
+  { label: "Dashboard", icon: LayoutDashboard },
+  { label: "Threat Queue", icon: Siren },
+  { label: "Incidents", icon: FolderOpen },
+  { label: "MITRE Center", icon: Target },
+  { label: "Executive", icon: BarChart3 },
+  { label: "Audit Timeline", icon: ScrollText },
+  { label: "Subscription", icon: CreditCard },
+  { label: "Settings", icon: Settings },
+];
+
+function renderPage(activePage) {
+  if (activePage === "Dashboard") return <Dashboard />;
+  if (activePage === "Threat Queue") return <ThreatQueue />;
+  if (activePage === "Incidents") return <Incidents />;
+  if (activePage === "MITRE Center") return <MitreCenter />;
+  if (activePage === "Executive") return <Executive />;
+  if (activePage === "Audit Timeline") return <AuditTimeline />;
+  if (activePage === "Subscription") return <Subscription />;
+  if (activePage === "Settings") return <SettingsPage />;
+
+  return <Dashboard />;
+}
+
+function App() {
+  const [activePage, setActivePage] = useState("Dashboard");
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="flex min-h-screen">
+        <aside className="w-72 border-r border-cyan-500/20 bg-slate-950/95 p-6">
+          <div className="mb-10 flex items-center gap-3">
+            <div className="rounded-2xl bg-cyan-500/10 p-3">
+              <Shield className="h-8 w-8 text-cyan-400" />
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-bold text-cyan-400">
+                CyberGuard
+              </h1>
+              <p className="text-xs text-slate-400">
+                SaaS SOC Platform
+              </p>
+            </div>
+          </div>
+
+          <nav className="space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePage === item.label;
+
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => setActivePage(item.label)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+                    isActive
+                      ? "bg-cyan-500/15 text-cyan-300 shadow-lg shadow-cyan-500/10"
+                      : "text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <main className="flex-1 p-8">
+          {renderPage(activePage)}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export default App;
