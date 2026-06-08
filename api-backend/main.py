@@ -218,3 +218,23 @@ def get_audit_logs():
             "details": "Malware C2 investigation changed from Open to Investigating.",
         },
     ]
+
+@app.get("/dashboard-analytics")
+def get_dashboard_analytics():
+    return {
+        "threat_distribution": [
+            {"name": "Critical", "value": 5},
+            {"name": "High", "value": 8},
+            {"name": "Medium", "value": 12},
+            {"name": "Low", "value": 4},
+        ],
+        "incident_trend": [
+            {"day": "Mon", "incidents": 3},
+            {"day": "Tue", "incidents": 5},
+            {"day": "Wed", "incidents": 4},
+            {"day": "Thu", "incidents": 7},
+            {"day": "Fri", "incidents": 6},
+            {"day": "Sat", "incidents": 2},
+            {"day": "Sun", "incidents": 4},
+        ],
+    }
