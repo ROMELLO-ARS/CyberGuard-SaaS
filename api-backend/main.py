@@ -113,3 +113,40 @@ def get_alerts():
 @app.get("/incidents")
 def get_incidents():
     return INCIDENTS
+
+@app.get("/mitre")
+def get_mitre_summary():
+    return [
+        {
+            "id": "T1110",
+            "technique": "Brute Force",
+            "tactic": "Credential Access",
+            "count": 6,
+            "severity": "Critical",
+            "description": "Repeated login attempts may indicate password guessing or credential attacks.",
+        },
+        {
+            "id": "T1071",
+            "technique": "Application Layer Protocol",
+            "tactic": "Command and Control",
+            "count": 4,
+            "severity": "High",
+            "description": "Suspicious outbound communication may indicate command-and-control activity.",
+        },
+        {
+            "id": "T1486",
+            "technique": "Data Encrypted for Impact",
+            "tactic": "Impact",
+            "count": 3,
+            "severity": "Critical",
+            "description": "Potential ransomware behaviour involving encryption or disruption of data availability.",
+        },
+        {
+            "id": "T1567",
+            "technique": "Exfiltration Over Web Service",
+            "tactic": "Exfiltration",
+            "count": 2,
+            "severity": "Medium",
+            "description": "Possible data exfiltration using outbound web-based transfer channels.",
+        },
+    ]
