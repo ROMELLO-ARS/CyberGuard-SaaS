@@ -181,3 +181,40 @@ def get_executive_summary():
             "executive_reporting": "Enabled",
         },
     }
+
+@app.get("/audit-logs")
+def get_audit_logs():
+    return [
+        {
+            "id": 1,
+            "timestamp": "2026-06-07 19:50",
+            "username": "admin",
+            "role": "Administrator",
+            "action": "Logged In",
+            "details": "Administrator accessed CyberGuard SaaS dashboard.",
+        },
+        {
+            "id": 2,
+            "timestamp": "2026-06-07 19:55",
+            "username": "analyst",
+            "role": "SOC Analyst",
+            "action": "Reviewed Alert",
+            "details": "Analyst reviewed Critical SSH Brute Force alert mapped to T1110.",
+        },
+        {
+            "id": 3,
+            "timestamp": "2026-06-07 20:05",
+            "username": "admin",
+            "role": "Administrator",
+            "action": "Created Incident",
+            "details": "Incident case created for ransomware activity affecting internal host.",
+        },
+        {
+            "id": 4,
+            "timestamp": "2026-06-07 20:15",
+            "username": "analyst",
+            "role": "SOC Analyst",
+            "action": "Updated Case Status",
+            "details": "Malware C2 investigation changed from Open to Investigating.",
+        },
+    ]
