@@ -150,3 +150,34 @@ def get_mitre_summary():
             "description": "Possible data exfiltration using outbound web-based transfer channels.",
         },
     ]
+
+@app.get("/executive-summary")
+def get_executive_summary():
+    return {
+        "security_posture_score": 82,
+        "security_posture": "Moderate Risk",
+        "summary": (
+            "CyberGuard has identified multiple high-priority security events, "
+            "including credential access attempts, command-and-control indicators, "
+            "and ransomware-related impact activity. Analyst response is recommended "
+            "for all critical and high-risk alerts."
+        ),
+        "top_risks": [
+            "Credential access attempts against exposed services",
+            "Possible malware command-and-control traffic",
+            "Ransomware activity affecting internal hosts",
+            "Suspicious outbound data transfer patterns",
+        ],
+        "recommended_actions": [
+            "Prioritise all Critical alerts in the Threat Queue",
+            "Create incident cases for confirmed high-risk activity",
+            "Review MITRE ATT&CK mappings for recurring tactics",
+            "Escalate ransomware indicators to SOC management",
+        ],
+        "maturity_indicators": {
+            "threat_detection": "Active",
+            "incident_response": "Developing",
+            "audit_readiness": "Enabled",
+            "executive_reporting": "Enabled",
+        },
+    }
