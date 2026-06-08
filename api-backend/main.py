@@ -89,3 +89,27 @@ def get_alerts():
             "recommendation": "Review outbound transfer volume and destination reputation.",
         },
     ]
+
+    INCIDENTS = [
+    {
+        "id": 1,
+        "title": "SSH Brute Force Investigation",
+        "severity": "Critical",
+        "assigned_to": "analyst",
+        "status": "Open",
+        "source_ip": "203.0.113.45",
+        "created_at": "2026-06-07 19:30",
+    },
+    {
+        "id": 2,
+        "title": "Malware C2 Traffic Review",
+        "severity": "High",
+        "assigned_to": "admin",
+        "status": "Investigating",
+        "source_ip": "198.51.100.22",
+        "created_at": "2026-06-07 19:45",
+    },
+]
+@app.get("/incidents")
+def get_incidents():
+    return INCIDENTS
