@@ -40,3 +40,52 @@ def get_metrics():
         "security_posture": "Stable",
         "soc_status": "Operational",
     }
+
+@app.get("/alerts")
+def get_alerts():
+    return [
+        {
+            "id": 1,
+            "risk_level": "Critical",
+            "src_ip": "203.0.113.45",
+            "dest_ip": "10.0.0.15",
+            "signature": "Simulated SSH Brute Force Attack",
+            "mitre_id": "T1110",
+            "mitre_tactic": "Credential Access",
+            "status": "Open",
+            "recommendation": "Investigate source IP and review authentication logs.",
+        },
+        {
+            "id": 2,
+            "risk_level": "High",
+            "src_ip": "198.51.100.22",
+            "dest_ip": "10.0.0.32",
+            "signature": "Possible Malware Command and Control Traffic",
+            "mitre_id": "T1071",
+            "mitre_tactic": "Command and Control",
+            "status": "Open",
+            "recommendation": "Review outbound traffic and isolate affected endpoint if required.",
+        },
+        {
+            "id": 3,
+            "risk_level": "Critical",
+            "src_ip": "192.0.2.88",
+            "dest_ip": "10.0.0.44",
+            "signature": "Ransomware Activity Detected",
+            "mitre_id": "T1486",
+            "mitre_tactic": "Impact",
+            "status": "Investigating",
+            "recommendation": "Isolate affected host and begin ransomware containment playbook.",
+        },
+        {
+            "id": 4,
+            "risk_level": "Medium",
+            "src_ip": "203.0.113.90",
+            "dest_ip": "10.0.0.55",
+            "signature": "Suspicious Data Exfiltration Pattern",
+            "mitre_id": "T1567",
+            "mitre_tactic": "Exfiltration",
+            "status": "Open",
+            "recommendation": "Review outbound transfer volume and destination reputation.",
+        },
+    ]

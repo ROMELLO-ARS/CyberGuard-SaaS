@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Shield,
   LayoutDashboard,
@@ -22,14 +22,46 @@ import Subscription from "./pages/Subscription";
 import SettingsPage from "./pages/Settings";
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "Threat Queue", icon: Siren },
-  { label: "Incidents", icon: FolderOpen },
-  { label: "MITRE Center", icon: Target },
-  { label: "Executive", icon: BarChart3 },
-  { label: "Audit Timeline", icon: ScrollText },
-  { label: "Subscription", icon: CreditCard },
-  { label: "Settings", icon: Settings },
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: ["Administrator", "SOC Analyst", "SOC Manager", "Executive"],
+  },
+  {
+    label: "Threat Queue",
+    icon: Siren,
+    roles: ["Administrator", "SOC Analyst", "SOC Manager"],
+  },
+  {
+    label: "Incidents",
+    icon: FolderOpen,
+    roles: ["Administrator", "SOC Analyst", "SOC Manager"],
+  },
+  {
+    label: "MITRE Center",
+    icon: Target,
+    roles: ["Administrator", "SOC Analyst", "SOC Manager"],
+  },
+  {
+    label: "Executive",
+    icon: BarChart3,
+    roles: ["Administrator", "SOC Manager", "Executive"],
+  },
+  {
+    label: "Audit Timeline",
+    icon: ScrollText,
+    roles: ["Administrator", "SOC Manager"],
+  },
+  {
+    label: "Subscription",
+    icon: CreditCard,
+    roles: ["Administrator"],
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    roles: ["Administrator"],
+  },
 ];
 
 function renderPage(activePage) {
@@ -62,6 +94,21 @@ function App() {
     };
   });
 
+  const allowedNavItems = useMemo(() => {
+    if (!user) return [];
+
+    return navItems.filter((item) => item.roles.includes(user.role));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (allowedNavItems.length === 0) return;
+
+    if (!allowedNavItems.some((item) => item.label === activePage)) {
+      setActivePage(allowedNavItems[0].label);
+    }
+  }, [user, activePage, allowedNavItems]);
+
   if (!user) {
     return <Login onLogin={setUser} />;
   }
@@ -92,7 +139,7 @@ function App() {
           </div>
 
           <nav className="space-y-2">
-            {navItems.map((item) => {
+            {allowedNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.label;
 
@@ -117,6 +164,7 @@ function App() {
             onClick={() => {
               localStorage.clear();
               setUser(null);
+              setActivePage("Dashboard");
             }}
             className="mt-8 w-full rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10"
           >
@@ -124,9 +172,7 @@ function App() {
           </button>
         </aside>
 
-        <main className="flex-1 p-8">
-          {renderPage(activePage)}
-        </main>
+        <main className="flex-1 p-8">{renderPage(activePage)}</main>
       </div>
     </div>
   );
