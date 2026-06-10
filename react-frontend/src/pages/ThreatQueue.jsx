@@ -29,6 +29,21 @@ export default function ThreatQueue() {
   if (loading) {
     return <p className="text-slate-300">Loading threat queue...</p>;
   }
+async function createIncident(selectedAlert) {
+  try {
+    await api.post("/incidents", {
+      title: selectedAlert.signature,
+      severity: selectedAlert.risk_level,
+      assigned_to: localStorage.getItem("cyberguard_user") || "analyst",
+      source_ip: selectedAlert.src_ip,
+    });
+
+    window.alert("Incident created successfully.");
+  } catch (error) {
+    console.error("Failed to create incident", error);
+    window.alert("Failed to create incident.");
+  }
+}
 
   return (
     <div>
@@ -49,6 +64,7 @@ export default function ThreatQueue() {
               <th className="p-4">Signature</th>
               <th className="p-4">MITRE</th>
               <th className="p-4">Status</th>
+              <th className="p-4">Action</th>
             </tr>
           </thead>
 
@@ -78,6 +94,14 @@ export default function ThreatQueue() {
                 </td>
 
                 <td className="p-4 text-slate-300">{alert.status}</td>
+                <td className="p-4">
+  <button
+    onClick={() => createIncident(alert)}
+    className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
+  >
+    Create Incident
+  </button>
+</td>
               </tr>
             ))}
           </tbody>
