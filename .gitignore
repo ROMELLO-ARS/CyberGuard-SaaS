@@ -9,3 +9,5 @@ build/
 *.db
 *.db-journal
 .vscode/
+*.db
+*.db-journal

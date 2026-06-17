@@ -2,6 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from auth import router as auth_router
+from database import (
+    init_db,
+    seed_incidents,
+    get_incidents_from_db,
+    create_incident_in_db,
+)
 
 app = FastAPI(
     title="CyberGuard SaaS API",
@@ -23,6 +29,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+
+init_db()
+seed_incidents()
 
 
 @app.get("/")
@@ -152,21 +161,28 @@ class IncidentCreateRequest(BaseModel):
     source_ip: str
 
 
+@app.get("/incidents")
+def get_incidents():
+    return get_incidents_from_db()
+
+
+class IncidentCreateRequest(BaseModel):
+    title: str
+    severity: str
+    assigned_to: str
+    source_ip: str
+
+
 @app.post("/incidents")
 def create_incident(request: IncidentCreateRequest):
-    new_incident = {
-        "id": len(INCIDENTS) + 1,
-        "title": request.title,
-        "severity": request.severity,
-        "assigned_to": request.assigned_to,
-        "status": "Open",
-        "source_ip": request.source_ip,
-        "created_at": "2026-06-08 00:40",
-    }
-
-    INCIDENTS.append(new_incident)
+    incident_id = create_incident_in_db(
+        title=request.title,
+        severity=request.severity,
+        assigned_to=request.assigned_to,
+        source_ip=request.source_ip,
+    )
 
     return {
         "message": "Incident created successfully",
-        "incident": new_incident,
+        "incident_id": incident_id,
     }
