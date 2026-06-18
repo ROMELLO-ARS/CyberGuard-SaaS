@@ -28,6 +28,19 @@ def init_db():
         """
     )
 
+    cursor.execute(
+    """
+    CREATE TABLE IF NOT EXISTS incident_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        incident_id INTEGER NOT NULL,
+        analyst TEXT NOT NULL,
+        note TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (incident_id) REFERENCES incidents (id)
+    )
+    """
+)
+
     conn.commit()
     conn.close()
 
@@ -125,3 +138,42 @@ def update_incident_status_in_db(incident_id, status):
     conn.close()
 
     return updated_rows
+
+
+def get_notes_for_incident(incident_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT * FROM incident_notes
+        WHERE incident_id = ?
+        ORDER BY id DESC
+        """,
+        (incident_id,),
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
+def add_note_to_incident(incident_id, analyst, note):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO incident_notes
+        (incident_id, analyst, note, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+        """,
+        (incident_id, analyst, note),
+    )
+
+    conn.commit()
+    note_id = cursor.lastrowid
+    conn.close()
+
+    return note_id

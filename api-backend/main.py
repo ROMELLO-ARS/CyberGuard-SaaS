@@ -8,6 +8,8 @@ from database import (
     get_incidents_from_db,
     create_incident_in_db,
     update_incident_status_in_db,
+    get_notes_for_incident,
+    add_note_to_incident,
 )
 
 
@@ -140,6 +142,11 @@ class IncidentStatusUpdateRequest(BaseModel):
     status: str
 
 
+class IncidentNoteCreateRequest(BaseModel):
+    analyst: str
+    note: str
+
+
 @app.get("/incidents")
 def get_incidents():
     return get_incidents_from_db()
@@ -150,6 +157,7 @@ class IncidentCreateRequest(BaseModel):
     severity: str
     assigned_to: str
     source_ip: str
+
 
 
 @app.post("/incidents")
@@ -183,4 +191,23 @@ def update_incident_status(incident_id: int, request: IncidentStatusUpdateReques
         "message": "Incident status updated successfully",
         "incident_id": incident_id,
         "status": request.status,
+    }
+
+@app.get("/incidents/{incident_id}/notes")
+def get_incident_notes(incident_id: int):
+    return get_notes_for_incident(incident_id)
+
+
+@app.post("/incidents/{incident_id}/notes")
+def create_incident_note(incident_id: int, request: IncidentNoteCreateRequest):
+    note_id = add_note_to_incident(
+        incident_id=incident_id,
+        analyst=request.analyst,
+        note=request.note,
+    )
+
+    return {
+        "message": "Incident note added successfully",
+        "note_id": note_id,
+        "incident_id": incident_id,
     }
