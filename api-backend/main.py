@@ -7,7 +7,9 @@ from database import (
     seed_incidents,
     get_incidents_from_db,
     create_incident_in_db,
+    update_incident_status_in_db,
 )
+
 
 app = FastAPI(
     title="CyberGuard SaaS API",
@@ -127,38 +129,15 @@ def get_alerts():
     ]
 
 
-INCIDENTS = [
-    {
-        "id": 1,
-        "title": "SSH Brute Force Investigation",
-        "severity": "Critical",
-        "assigned_to": "analyst",
-        "status": "Open",
-        "source_ip": "203.0.113.45",
-        "created_at": "2026-06-07 19:30",
-    },
-    {
-        "id": 2,
-        "title": "Malware C2 Traffic Review",
-        "severity": "High",
-        "assigned_to": "admin",
-        "status": "Investigating",
-        "source_ip": "198.51.100.22",
-        "created_at": "2026-06-07 19:45",
-    },
-]
-
-
-@app.get("/incidents")
-def get_incidents():
-    return INCIDENTS
-
 
 class IncidentCreateRequest(BaseModel):
     title: str
     severity: str
     assigned_to: str
     source_ip: str
+
+class IncidentStatusUpdateRequest(BaseModel):
+    status: str
 
 
 @app.get("/incidents")
@@ -185,4 +164,23 @@ def create_incident(request: IncidentCreateRequest):
     return {
         "message": "Incident created successfully",
         "incident_id": incident_id,
+    }
+
+@app.patch("/incidents/{incident_id}/status")
+def update_incident_status(incident_id: int, request: IncidentStatusUpdateRequest):
+    updated_rows = update_incident_status_in_db(
+        incident_id=incident_id,
+        status=request.status,
+    )
+
+    if updated_rows == 0:
+        return {
+            "message": "Incident not found",
+            "incident_id": incident_id,
+        }
+
+    return {
+        "message": "Incident status updated successfully",
+        "incident_id": incident_id,
+        "status": request.status,
     }

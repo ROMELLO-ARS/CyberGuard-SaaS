@@ -24,6 +24,24 @@ export default function Incidents() {
     return <p className="text-slate-300">Loading incidents...</p>;
   }
 
+  async function updateIncidentStatus(incidentId, newStatus) {
+  try {
+    await api.patch(`/incidents/${incidentId}/status`, {
+      status: newStatus,
+    });
+
+    setIncidents((currentIncidents) =>
+      currentIncidents.map((incident) =>
+        incident.id === incidentId
+          ? { ...incident, status: newStatus }
+          : incident
+      )
+    );
+  } catch (error) {
+    console.error("Failed to update incident status", error);
+    window.alert("Failed to update incident status.");
+  }
+}
   return (
     <div>
       <div className="mb-8">
@@ -70,10 +88,18 @@ export default function Incidents() {
               </div>
 
               <div className="rounded-xl bg-slate-800 p-4">
-                <p className="text-xs text-slate-500">Status</p>
-                <p className="font-semibold text-yellow-300">
-                  {incident.status}
-                </p>
+               <select
+  value={incident.status}
+  onChange={(event) =>
+    updateIncidentStatus(incident.id, event.target.value)
+  }
+  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 font-semibold text-yellow-300 outline-none"
+>
+  <option value="Open">Open</option>
+  <option value="Investigating">Investigating</option>
+  <option value="Contained">Contained</option>
+  <option value="Resolved">Resolved</option>
+</select>
               </div>
 
               <div className="rounded-xl bg-slate-800 p-4">

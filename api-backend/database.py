@@ -106,3 +106,22 @@ def create_incident_in_db(title, severity, assigned_to, source_ip):
     conn.close()
 
     return incident_id
+
+def update_incident_status_in_db(incident_id, status):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE incidents
+        SET status = ?
+        WHERE id = ?
+        """,
+        (status, incident_id),
+    )
+
+    conn.commit()
+    updated_rows = cursor.rowcount
+    conn.close()
+
+    return updated_rows
