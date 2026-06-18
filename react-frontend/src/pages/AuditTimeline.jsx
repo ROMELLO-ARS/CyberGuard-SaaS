@@ -28,8 +28,13 @@ export default function AuditTimeline() {
         </p>
       </div>
 
-      <div className="relative border-l border-cyan-500/30 pl-6">
-        {logs.map((log) => (
+      {logs.length === 0 ? (
+  <div className="rounded-2xl border border-cyan-500/20 bg-slate-900 p-6 text-slate-400">
+    No audit logs have been recorded yet. Change an incident status or add an analyst note to generate audit activity.
+  </div>
+) : (
+  <div className="relative border-l border-cyan-500/30 pl-6">
+    {logs.map((log) => (
           <div key={log.id} className="mb-8">
             <div className="absolute -left-2 h-4 w-4 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/40"></div>
 
@@ -58,7 +63,8 @@ export default function AuditTimeline() {
             </div>
           </div>
         ))}
-      </div>
+            </div>
+)}
     </div>
   );
 }

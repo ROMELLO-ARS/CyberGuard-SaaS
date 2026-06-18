@@ -10,6 +10,8 @@ from database import (
     update_incident_status_in_db,
     get_notes_for_incident,
     add_note_to_incident,
+    create_audit_log,
+    get_audit_logs_from_db,
 )
 
 
@@ -131,15 +133,17 @@ def get_alerts():
     ]
 
 
-
 class IncidentCreateRequest(BaseModel):
     title: str
     severity: str
     assigned_to: str
     source_ip: str
 
+
 class IncidentStatusUpdateRequest(BaseModel):
     status: str
+    username: str = "system"
+    role: str = "System"
 
 
 class IncidentNoteCreateRequest(BaseModel):
@@ -152,14 +156,6 @@ def get_incidents():
     return get_incidents_from_db()
 
 
-class IncidentCreateRequest(BaseModel):
-    title: str
-    severity: str
-    assigned_to: str
-    source_ip: str
-
-
-
 @app.post("/incidents")
 def create_incident(request: IncidentCreateRequest):
     incident_id = create_incident_in_db(
@@ -169,10 +165,18 @@ def create_incident(request: IncidentCreateRequest):
         source_ip=request.source_ip,
     )
 
+    create_audit_log(
+        username=request.assigned_to,
+        role="SOC Analyst",
+        action="Created Incident",
+        details=f"Incident #{incident_id} created for {request.title}.",
+    )
+
     return {
         "message": "Incident created successfully",
         "incident_id": incident_id,
     }
+
 
 @app.patch("/incidents/{incident_id}/status")
 def update_incident_status(incident_id: int, request: IncidentStatusUpdateRequest):
@@ -187,11 +191,19 @@ def update_incident_status(incident_id: int, request: IncidentStatusUpdateReques
             "incident_id": incident_id,
         }
 
+    create_audit_log(
+        username=request.username,
+        role=request.role,
+        action="Updated Incident Status",
+        details=f"Incident #{incident_id} status changed to {request.status}.",
+    )
+
     return {
         "message": "Incident status updated successfully",
         "incident_id": incident_id,
         "status": request.status,
     }
+
 
 @app.get("/incidents/{incident_id}/notes")
 def get_incident_notes(incident_id: int):
@@ -206,8 +218,20 @@ def create_incident_note(incident_id: int, request: IncidentNoteCreateRequest):
         note=request.note,
     )
 
+    create_audit_log(
+        username=request.analyst,
+        role="SOC Analyst",
+        action="Added Incident Note",
+        details=f"Analyst note added to Incident #{incident_id}.",
+    )
+
     return {
         "message": "Incident note added successfully",
         "note_id": note_id,
         "incident_id": incident_id,
     }
+
+
+@app.get("/audit-logs")
+def get_audit_logs():
+    return get_audit_logs_from_db()

@@ -27,8 +27,10 @@ export default function Incidents() {
   async function updateIncidentStatus(incidentId, newStatus) {
     try {
       await api.patch(`/incidents/${incidentId}/status`, {
-        status: newStatus,
-      });
+  status: newStatus,
+  username: localStorage.getItem("cyberguard_user") || "system",
+  role: localStorage.getItem("cyberguard_role") || "System",
+});
 
       setIncidents((currentIncidents) =>
         currentIncidents.map((incident) =>

@@ -29,17 +29,30 @@ def init_db():
     )
 
     cursor.execute(
-    """
-    CREATE TABLE IF NOT EXISTS incident_notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        incident_id INTEGER NOT NULL,
-        analyst TEXT NOT NULL,
-        note TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (incident_id) REFERENCES incidents (id)
+        """
+        CREATE TABLE IF NOT EXISTS incident_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            incident_id INTEGER NOT NULL,
+            analyst TEXT NOT NULL,
+            note TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (incident_id) REFERENCES incidents (id)
+        )
+        """
     )
-    """
-)
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            role TEXT NOT NULL,
+            action TEXT NOT NULL,
+            details TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
 
     conn.commit()
     conn.close()
@@ -55,7 +68,7 @@ def seed_incidents():
     if count == 0:
         cursor.executemany(
             """
-            INSERT INTO incidents 
+            INSERT INTO incidents
             (title, severity, assigned_to, status, source_ip, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
@@ -120,6 +133,7 @@ def create_incident_in_db(title, severity, assigned_to, source_ip):
 
     return incident_id
 
+
 def update_incident_status_in_db(incident_id, status):
     conn = get_connection()
     cursor = conn.cursor()
@@ -177,3 +191,47 @@ def add_note_to_incident(incident_id, analyst, note):
     conn.close()
 
     return note_id
+
+
+def create_audit_log(username, role, action, details):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO audit_logs
+        (username, role, action, details, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+        """,
+        (username, role, action, details),
+    )
+
+    conn.commit()
+    audit_id = cursor.lastrowid
+    conn.close()
+
+    return audit_id
+
+
+def get_audit_logs_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            created_at AS timestamp,
+            username,
+            role,
+            action,
+            details
+        FROM audit_logs
+        ORDER BY id DESC
+        """
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
