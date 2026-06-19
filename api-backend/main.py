@@ -19,6 +19,7 @@ from database import (
     get_real_metrics_from_db,
     get_dashboard_analytics_from_db,
     get_executive_summary_from_db,
+    get_mitre_summary_from_db,
 )
 
 
@@ -358,3 +359,7 @@ def generate_executive_report_pdf():
         filename="cyberguard_executive_report.pdf",
         media_type="application/pdf",
     )
+
+@app.get("/mitre")
+def get_mitre_summary():
+    return get_mitre_summary_from_db()

@@ -484,3 +484,100 @@ def get_executive_summary_from_db():
             "audit_events": audit_events,
         },
     }
+
+def get_mitre_summary_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            title,
+            severity,
+            status,
+            source_ip
+        FROM incidents
+        ORDER BY id DESC
+        """
+    )
+
+    incidents = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    mitre_map = {
+        "Brute Force": {
+            "id": "T1110",
+            "technique": "Brute Force",
+            "tactic": "Credential Access",
+            "description": "Repeated login attempts may indicate password guessing or credential attacks.",
+            "recommendation": "Review authentication logs, block suspicious source IPs, and enforce MFA.",
+        },
+        "Malware": {
+            "id": "T1071",
+            "technique": "Application Layer Protocol",
+            "tactic": "Command and Control",
+            "description": "Suspicious outbound communication may indicate command-and-control activity.",
+            "recommendation": "Review outbound traffic, isolate affected endpoints, and inspect DNS or HTTP traffic.",
+        },
+        "Ransomware": {
+            "id": "T1486",
+            "technique": "Data Encrypted for Impact",
+            "tactic": "Impact",
+            "description": "Potential ransomware behaviour involving encryption or disruption of data availability.",
+            "recommendation": "Isolate affected systems, preserve evidence, and begin ransomware containment procedures.",
+        },
+        "Exfiltration": {
+            "id": "T1567",
+            "technique": "Exfiltration Over Web Service",
+            "tactic": "Exfiltration",
+            "description": "Possible data exfiltration using outbound web-based transfer channels.",
+            "recommendation": "Review outbound transfer volume, destination reputation, and sensitive data movement.",
+        },
+    }
+
+    summary = {}
+
+    for incident in incidents:
+        title = incident["title"]
+
+        matched_key = None
+
+        for keyword in mitre_map:
+            if keyword.lower() in title.lower():
+                matched_key = keyword
+                break
+
+        if not matched_key:
+            matched_key = "Brute Force"
+
+        mitre = mitre_map[matched_key]
+        mitre_id = mitre["id"]
+
+        if mitre_id not in summary:
+            summary[mitre_id] = {
+                "id": mitre["id"],
+                "technique": mitre["technique"],
+                "tactic": mitre["tactic"],
+                "count": 0,
+                "severity": incident["severity"],
+                "description": mitre["description"],
+                "recommendation": mitre["recommendation"],
+                "related_incidents": [],
+            }
+
+        summary[mitre_id]["count"] += 1
+        summary[mitre_id]["related_incidents"].append(
+            {
+                "title": incident["title"],
+                "severity": incident["severity"],
+                "status": incident["status"],
+                "source_ip": incident["source_ip"],
+            }
+        )
+
+        if incident["severity"] == "Critical":
+            summary[mitre_id]["severity"] = "Critical"
+        elif incident["severity"] == "High" and summary[mitre_id]["severity"] != "Critical":
+            summary[mitre_id]["severity"] = "High"
+
+    return list(summary.values())
