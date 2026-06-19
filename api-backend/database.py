@@ -235,3 +235,55 @@ def get_audit_logs_from_db():
     conn.close()
 
     return [dict(row) for row in rows]
+
+def get_real_metrics_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM incidents")
+    total_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE status = 'Open'")
+    open_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE severity = 'Critical'")
+    critical_alerts = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incident_notes")
+    total_notes = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM audit_logs")
+    audit_events = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE status = 'Resolved'")
+    resolved_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE status = 'Contained'")
+    contained_incidents = cursor.fetchone()[0]
+
+    conn.close()
+
+    if critical_alerts >= 5 or open_incidents >= 10:
+        security_posture = "High Risk"
+        soc_status = "Needs Attention"
+    elif critical_alerts >= 2 or open_incidents >= 5:
+        security_posture = "Moderate Risk"
+        soc_status = "Monitoring"
+    else:
+        security_posture = "Stable"
+        soc_status = "Operational"
+
+    analyst_xp = total_notes * 25 + resolved_incidents * 50 + contained_incidents * 35
+
+    return {
+        "critical_alerts": critical_alerts,
+        "open_incidents": open_incidents,
+        "total_incidents": total_incidents,
+        "audit_events": audit_events,
+        "total_notes": total_notes,
+        "emergency_events": 0,
+        "mitre_techniques": 8,
+        "analyst_xp": analyst_xp,
+        "security_posture": security_posture,
+        "soc_status": soc_status,
+    }

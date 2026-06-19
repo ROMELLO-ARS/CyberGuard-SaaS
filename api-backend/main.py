@@ -12,6 +12,7 @@ from database import (
     add_note_to_incident,
     create_audit_log,
     get_audit_logs_from_db,
+    get_real_metrics_from_db,
 )
 
 
@@ -51,16 +52,7 @@ def health_check():
 
 @app.get("/metrics")
 def get_metrics():
-    return {
-        "critical_alerts": 5,
-        "open_incidents": 12,
-        "audit_events": 0,
-        "emergency_events": 0,
-        "mitre_techniques": 8,
-        "analyst_xp": 200,
-        "security_posture": "Stable",
-        "soc_status": "Operational",
-    }
+    return get_real_metrics_from_db()
 
 
 @app.get("/dashboard-analytics")
