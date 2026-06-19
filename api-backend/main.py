@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from security import require_roles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from auth import router as auth_router
@@ -67,7 +68,9 @@ def get_dashboard_analytics():
     return get_dashboard_analytics_from_db()
 
 @app.get("/executive-summary")
-def get_executive_summary():
+def get_executive_summary(
+    user=Depends(require_roles(["Administrator", "Executive"]))
+):
     return get_executive_summary_from_db()
 
 @app.get("/alerts")
@@ -192,9 +195,11 @@ def update_incident_status(incident_id: int, request: IncidentStatusUpdateReques
     }
 
 
-@app.get("/incidents/{incident_id}/notes")
-def get_incident_notes(incident_id: int):
-    return get_notes_for_incident(incident_id)
+@app.get("/incidents")
+def get_incidents(
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+):
+    return get_incidents_from_db()
 
 
 @app.post("/incidents/{incident_id}/notes")
@@ -220,12 +225,16 @@ def create_incident_note(incident_id: int, request: IncidentNoteCreateRequest):
 
 
 @app.get("/audit-logs")
-def get_audit_logs():
+def get_audit_logs(
+    user=Depends(require_roles(["Administrator"]))
+):
     return get_audit_logs_from_db()
 
 
 @app.get("/executive-report/pdf")
-def generate_executive_report_pdf():
+def generate_executive_report_pdf(
+    user=Depends(require_roles(["Administrator", "Executive"]))
+):
     summary = get_executive_summary_from_db()
 
     reports_dir = Path("reports")
@@ -361,5 +370,7 @@ def generate_executive_report_pdf():
     )
 
 @app.get("/mitre")
-def get_mitre_summary():
+def get_mitre_summary(
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+):
     return get_mitre_summary_from_db()
