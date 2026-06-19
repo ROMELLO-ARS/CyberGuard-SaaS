@@ -287,3 +287,67 @@ def get_real_metrics_from_db():
         "security_posture": security_posture,
         "soc_status": soc_status,
     }
+
+def get_dashboard_analytics_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT severity AS name, COUNT(*) AS value
+        FROM incidents
+        GROUP BY severity
+        ORDER BY value DESC
+        """
+    )
+    threat_distribution = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute(
+        """
+        SELECT status AS name, COUNT(*) AS value
+        FROM incidents
+        GROUP BY status
+        ORDER BY value DESC
+        """
+    )
+    status_distribution = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute(
+        """
+        SELECT assigned_to AS name, COUNT(*) AS incidents
+        FROM incidents
+        GROUP BY assigned_to
+        ORDER BY incidents DESC
+        """
+    )
+    analyst_workload = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute(
+        """
+        SELECT DATE(created_at) AS day, COUNT(*) AS incidents
+        FROM incidents
+        GROUP BY DATE(created_at)
+        ORDER BY DATE(created_at)
+        """
+    )
+    incident_trend = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute(
+        """
+        SELECT DATE(created_at) AS day, COUNT(*) AS events
+        FROM audit_logs
+        GROUP BY DATE(created_at)
+        ORDER BY DATE(created_at)
+        """
+    )
+    audit_trend = [dict(row) for row in cursor.fetchall()]
+
+    conn.close()
+
+    return {
+        "threat_distribution": threat_distribution,
+        "status_distribution": status_distribution,
+        "analyst_workload": analyst_workload,
+        "incident_trend": incident_trend,
+        "audit_trend": audit_trend,
+    }
