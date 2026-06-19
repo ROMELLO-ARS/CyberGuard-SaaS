@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from auth import router as auth_router
+from fastapi.responses import FileResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from pathlib import Path
 from database import (
     init_db,
     seed_incidents,
@@ -217,3 +221,140 @@ def create_incident_note(incident_id: int, request: IncidentNoteCreateRequest):
 @app.get("/audit-logs")
 def get_audit_logs():
     return get_audit_logs_from_db()
+
+
+@app.get("/executive-report/pdf")
+def generate_executive_report_pdf():
+    summary = get_executive_summary_from_db()
+
+    reports_dir = Path("reports")
+    reports_dir.mkdir(exist_ok=True)
+
+    pdf_path = reports_dir / "cyberguard_executive_report.pdf"
+
+    c = canvas.Canvas(str(pdf_path), pagesize=letter)
+    width, height = letter
+
+    y = height - 50
+
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(50, y, "CyberGuard Executive Security Report")
+
+    y -= 30
+    c.setFont("Helvetica", 10)
+    c.drawString(50, y, "Generated from live CyberGuard SQLite SOC data.")
+
+    y -= 40
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "Executive Overview")
+
+    y -= 25
+    c.setFont("Helvetica", 11)
+    c.drawString(50, y, f"Security Posture Score: {summary['security_posture_score']}/100")
+
+    y -= 18
+    c.drawString(50, y, f"Current Security Posture: {summary['security_posture']}")
+
+    stats = summary["statistics"]
+
+    y -= 35
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "Key SOC Metrics")
+
+    metrics = [
+        f"Total Incidents: {stats['total_incidents']}",
+        f"Critical Incidents: {stats['critical_incidents']}",
+        f"High Incidents: {stats['high_incidents']}",
+        f"Open Incidents: {stats['open_incidents']}",
+        f"Resolved Incidents: {stats['resolved_incidents']}",
+        f"Contained Incidents: {stats['contained_incidents']}",
+        f"Analyst Notes: {stats['total_notes']}",
+        f"Audit Events: {stats['audit_events']}",
+    ]
+
+    c.setFont("Helvetica", 11)
+    for metric in metrics:
+        y -= 18
+        c.drawString(70, y, f"- {metric}")
+
+    y -= 35
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "Executive Summary")
+
+    y -= 22
+    c.setFont("Helvetica", 10)
+
+    summary_text = summary["summary"]
+    wrapped_summary = []
+    words = summary_text.split()
+    line = ""
+
+    for word in words:
+        if len(line + " " + word) < 90:
+            line += " " + word
+        else:
+            wrapped_summary.append(line.strip())
+            line = word
+
+    if line:
+        wrapped_summary.append(line.strip())
+
+    for line in wrapped_summary:
+        y -= 15
+        c.drawString(70, y, line)
+
+        if y < 90:
+            c.showPage()
+            y = height - 50
+            c.setFont("Helvetica", 10)
+
+    y -= 35
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "Top Security Risks")
+
+    c.setFont("Helvetica", 10)
+    for risk in summary["top_risks"]:
+        y -= 16
+        c.drawString(70, y, f"- {risk[:100]}")
+
+        if y < 90:
+            c.showPage()
+            y = height - 50
+            c.setFont("Helvetica", 10)
+
+    y -= 35
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "Recommended Actions")
+
+    c.setFont("Helvetica", 10)
+    for action in summary["recommended_actions"]:
+        y -= 16
+        c.drawString(70, y, f"- {action[:100]}")
+
+        if y < 90:
+            c.showPage()
+            y = height - 50
+            c.setFont("Helvetica", 10)
+
+    y -= 35
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, "SOC Maturity Indicators")
+
+    c.setFont("Helvetica", 10)
+    for key, value in summary["maturity_indicators"].items():
+        y -= 16
+        label = key.replace("_", " ").title()
+        c.drawString(70, y, f"- {label}: {value}")
+
+        if y < 90:
+            c.showPage()
+            y = height - 50
+            c.setFont("Helvetica", 10)
+
+    c.save()
+
+    return FileResponse(
+        path=str(pdf_path),
+        filename="cyberguard_executive_report.pdf",
+        media_type="application/pdf",
+    )
