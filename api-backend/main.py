@@ -14,6 +14,7 @@ from database import (
     get_audit_logs_from_db,
     get_real_metrics_from_db,
     get_dashboard_analytics_from_db,
+    get_executive_summary_from_db,
 )
 
 
@@ -59,6 +60,10 @@ def get_metrics():
 @app.get("/dashboard-analytics")
 def get_dashboard_analytics():
     return get_dashboard_analytics_from_db()
+
+@app.get("/executive-summary")
+def get_executive_summary():
+    return get_executive_summary_from_db()
 
 @app.get("/alerts")
 def get_alerts():

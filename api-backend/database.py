@@ -351,3 +351,136 @@ def get_dashboard_analytics_from_db():
         "incident_trend": incident_trend,
         "audit_trend": audit_trend,
     }
+
+def get_executive_summary_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM incidents")
+    total_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE severity = 'Critical'")
+    critical_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE severity = 'High'")
+    high_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE status = 'Open'")
+    open_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE status = 'Resolved'")
+    resolved_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incidents WHERE status = 'Contained'")
+    contained_incidents = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM incident_notes")
+    total_notes = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM audit_logs")
+    audit_events = cursor.fetchone()[0]
+
+    cursor.execute(
+        """
+        SELECT title, severity, status, source_ip
+        FROM incidents
+        WHERE severity IN ('Critical', 'High')
+        ORDER BY id DESC
+        LIMIT 4
+        """
+    )
+    high_risk_incidents = [dict(row) for row in cursor.fetchall()]
+
+    conn.close()
+
+    risk_score = 100
+
+    risk_score -= critical_incidents * 12
+    risk_score -= high_incidents * 7
+    risk_score -= open_incidents * 5
+    risk_score += resolved_incidents * 6
+    risk_score += contained_incidents * 4
+
+    security_posture_score = max(0, min(100, risk_score))
+
+    if security_posture_score >= 80:
+        security_posture = "Stable"
+    elif security_posture_score >= 60:
+        security_posture = "Moderate Risk"
+    else:
+        security_posture = "High Risk"
+
+    top_risks = []
+
+    if critical_incidents > 0:
+        top_risks.append(
+            f"{critical_incidents} critical incident(s) require priority SOC review."
+        )
+
+    if high_incidents > 0:
+        top_risks.append(
+            f"{high_incidents} high-severity incident(s) may require escalation."
+        )
+
+    if open_incidents > 0:
+        top_risks.append(
+            f"{open_incidents} open incident(s) remain unresolved."
+        )
+
+    for incident in high_risk_incidents:
+        top_risks.append(
+            f"{incident['severity']} incident: {incident['title']} from source IP {incident['source_ip']}."
+        )
+
+    if not top_risks:
+        top_risks.append("No major unresolved risks detected at this time.")
+
+    recommended_actions = [
+        "Prioritise Critical and High incidents for analyst review.",
+        "Ensure analyst notes are added for every active investigation.",
+        "Review audit logs for accountability and workflow traceability.",
+        "Move contained or resolved incidents through closure procedures.",
+    ]
+
+    if open_incidents >= 3:
+        recommended_actions.append(
+            "Reduce the open incident backlog to improve SOC response maturity."
+        )
+
+    if total_notes == 0:
+        recommended_actions.append(
+            "Add investigation notes to improve evidence tracking and reporting."
+        )
+
+    summary = (
+        f"CyberGuard currently reports {total_incidents} total incident(s), "
+        f"including {critical_incidents} critical incident(s), {high_incidents} high-severity incident(s), "
+        f"and {open_incidents} open incident(s). The current security posture is {security_posture} "
+        f"with a score of {security_posture_score}/100. The system has recorded "
+        f"{audit_events} audit event(s) and {total_notes} analyst note(s), supporting traceability, "
+        f"incident accountability, and executive-level reporting."
+    )
+
+    return {
+        "security_posture_score": security_posture_score,
+        "security_posture": security_posture,
+        "summary": summary,
+        "top_risks": top_risks[:6],
+        "recommended_actions": recommended_actions,
+        "maturity_indicators": {
+            "threat_detection": "Active" if total_incidents > 0 else "Developing",
+            "incident_response": "Active" if open_incidents > 0 else "Stable",
+            "audit_readiness": "Enabled" if audit_events > 0 else "Developing",
+            "executive_reporting": "Enabled",
+        },
+        "statistics": {
+            "total_incidents": total_incidents,
+            "critical_incidents": critical_incidents,
+            "high_incidents": high_incidents,
+            "open_incidents": open_incidents,
+            "resolved_incidents": resolved_incidents,
+            "contained_incidents": contained_incidents,
+            "total_notes": total_notes,
+            "audit_events": audit_events,
+        },
+    }

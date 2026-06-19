@@ -58,6 +58,36 @@ export default function Executive() {
         </div>
       </div>
 
+
+        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
+  <div className="rounded-2xl border border-red-500/20 bg-slate-900 p-6">
+    <p className="text-sm text-slate-400">Critical Incidents</p>
+    <h2 className="mt-3 text-4xl font-bold text-red-400">
+      {summary.statistics.critical_incidents}
+    </h2>
+  </div>
+
+  <div className="rounded-2xl border border-yellow-500/20 bg-slate-900 p-6">
+    <p className="text-sm text-slate-400">Open Incidents</p>
+    <h2 className="mt-3 text-4xl font-bold text-yellow-400">
+      {summary.statistics.open_incidents}
+    </h2>
+  </div>
+
+  <div className="rounded-2xl border border-green-500/20 bg-slate-900 p-6">
+    <p className="text-sm text-slate-400">Resolved / Contained</p>
+    <h2 className="mt-3 text-4xl font-bold text-green-400">
+      {summary.statistics.resolved_incidents + summary.statistics.contained_incidents}
+    </h2>
+  </div>
+
+  <div className="rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
+    <p className="text-sm text-slate-400">Audit Events</p>
+    <h2 className="mt-3 text-4xl font-bold text-cyan-400">
+      {summary.statistics.audit_events}
+    </h2>
+  </div>
+</div>
       <section className="mb-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
         <h2 className="text-2xl font-bold text-cyan-300">
           AI Executive Summary
