@@ -72,6 +72,51 @@ export default function MitreCenter() {
             </div>
 
             <p className="mt-4 text-slate-300">{item.description}</p>
+            {item.recommendation && (
+  <div className="mt-4 rounded-xl border border-cyan-500/10 bg-cyan-500/5 p-4">
+    <p className="text-sm font-semibold text-cyan-300">
+      Recommended Analyst Action
+    </p>
+    <p className="mt-2 text-sm leading-6 text-slate-300">
+      {item.recommendation}
+    </p>
+  </div>
+)}
+
+{item.related_incidents && item.related_incidents.length > 0 && (
+  <div className="mt-4">
+    <p className="mb-3 text-sm font-semibold text-slate-300">
+      Related Incidents
+    </p>
+
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {item.related_incidents.map((incident, index) => (
+        <div
+          key={index}
+          className="rounded-xl border border-slate-700 bg-slate-950 p-4"
+        >
+          <p className="font-semibold text-white">
+            {incident.title}
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-red-500/10 px-2 py-1 text-red-300">
+              {incident.severity}
+            </span>
+
+            <span className="rounded-full bg-yellow-500/10 px-2 py-1 text-yellow-300">
+              {incident.status}
+            </span>
+
+            <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-cyan-300">
+              {incident.source_ip}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
           </div>
         ))}
       </div>

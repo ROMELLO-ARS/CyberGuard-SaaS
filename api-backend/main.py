@@ -1,12 +1,23 @@
-from fastapi import FastAPI, Depends
-from security import require_roles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from auth import router as auth_router
-from fastapi.responses import FileResponse
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 from pathlib import Path
+from reportlab.lib import colors
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    PageBreak,
+)
+
+from auth import router as auth_router
+from security import require_roles
 from database import (
     init_db,
     seed_incidents,
@@ -49,6 +60,24 @@ init_db()
 seed_incidents()
 
 
+class IncidentCreateRequest(BaseModel):
+    title: str
+    severity: str
+    assigned_to: str
+    source_ip: str
+
+
+class IncidentStatusUpdateRequest(BaseModel):
+    status: str
+    username: str = "system"
+    role: str = "System"
+
+
+class IncidentNoteCreateRequest(BaseModel):
+    analyst: str
+    note: str
+
+
 @app.get("/")
 def health_check():
     return {
@@ -67,14 +96,18 @@ def get_metrics():
 def get_dashboard_analytics():
     return get_dashboard_analytics_from_db()
 
+
 @app.get("/executive-summary")
 def get_executive_summary(
     user=Depends(require_roles(["Administrator", "Executive"]))
 ):
     return get_executive_summary_from_db()
 
+
 @app.get("/alerts")
-def get_alerts():
+def get_alerts(
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+):
     return [
         {
             "id": 1,
@@ -123,31 +156,18 @@ def get_alerts():
     ]
 
 
-class IncidentCreateRequest(BaseModel):
-    title: str
-    severity: str
-    assigned_to: str
-    source_ip: str
-
-
-class IncidentStatusUpdateRequest(BaseModel):
-    status: str
-    username: str = "system"
-    role: str = "System"
-
-
-class IncidentNoteCreateRequest(BaseModel):
-    analyst: str
-    note: str
-
-
 @app.get("/incidents")
-def get_incidents():
+def get_incidents(
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+):
     return get_incidents_from_db()
 
 
 @app.post("/incidents")
-def create_incident(request: IncidentCreateRequest):
+def create_incident(
+    request: IncidentCreateRequest,
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"])),
+):
     incident_id = create_incident_in_db(
         title=request.title,
         severity=request.severity,
@@ -156,8 +176,8 @@ def create_incident(request: IncidentCreateRequest):
     )
 
     create_audit_log(
-        username=request.assigned_to,
-        role="SOC Analyst",
+        username=user["username"],
+        role=user["role"],
         action="Created Incident",
         details=f"Incident #{incident_id} created for {request.title}.",
     )
@@ -169,7 +189,11 @@ def create_incident(request: IncidentCreateRequest):
 
 
 @app.patch("/incidents/{incident_id}/status")
-def update_incident_status(incident_id: int, request: IncidentStatusUpdateRequest):
+def update_incident_status(
+    incident_id: int,
+    request: IncidentStatusUpdateRequest,
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"])),
+):
     updated_rows = update_incident_status_in_db(
         incident_id=incident_id,
         status=request.status,
@@ -182,8 +206,8 @@ def update_incident_status(incident_id: int, request: IncidentStatusUpdateReques
         }
 
     create_audit_log(
-        username=request.username,
-        role=request.role,
+        username=user["username"],
+        role=user["role"],
         action="Updated Incident Status",
         details=f"Incident #{incident_id} status changed to {request.status}.",
     )
@@ -195,15 +219,20 @@ def update_incident_status(incident_id: int, request: IncidentStatusUpdateReques
     }
 
 
-@app.get("/incidents")
-def get_incidents(
-    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+@app.get("/incidents/{incident_id}/notes")
+def get_incident_notes(
+    incident_id: int,
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"])),
 ):
-    return get_incidents_from_db()
+    return get_notes_for_incident(incident_id)
 
 
 @app.post("/incidents/{incident_id}/notes")
-def create_incident_note(incident_id: int, request: IncidentNoteCreateRequest):
+def create_incident_note(
+    incident_id: int,
+    request: IncidentNoteCreateRequest,
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"])),
+):
     note_id = add_note_to_incident(
         incident_id=incident_id,
         analyst=request.analyst,
@@ -211,8 +240,8 @@ def create_incident_note(incident_id: int, request: IncidentNoteCreateRequest):
     )
 
     create_audit_log(
-        username=request.analyst,
-        role="SOC Analyst",
+        username=user["username"],
+        role=user["role"],
         action="Added Incident Note",
         details=f"Analyst note added to Incident #{incident_id}.",
     )
@@ -231,146 +260,231 @@ def get_audit_logs(
     return get_audit_logs_from_db()
 
 
+@app.get("/mitre")
+def get_mitre_summary(
+    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+):
+    return get_mitre_summary_from_db()
+
+
 @app.get("/executive-report/pdf")
 def generate_executive_report_pdf(
     user=Depends(require_roles(["Administrator", "Executive"]))
 ):
     summary = get_executive_summary_from_db()
+    stats = summary["statistics"]
 
     reports_dir = Path("reports")
     reports_dir.mkdir(exist_ok=True)
 
     pdf_path = reports_dir / "cyberguard_executive_report.pdf"
 
-    c = canvas.Canvas(str(pdf_path), pagesize=letter)
-    width, height = letter
+    doc = SimpleDocTemplate(
+        str(pdf_path),
+        pagesize=letter,
+        rightMargin=50,
+        leftMargin=50,
+        topMargin=50,
+        bottomMargin=45,
+    )
 
-    y = height - 50
+    styles = getSampleStyleSheet()
 
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(50, y, "CyberGuard Executive Security Report")
+    title_style = ParagraphStyle(
+        "CyberGuardTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=22,
+        leading=26,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=10,
+    )
 
-    y -= 30
-    c.setFont("Helvetica", 10)
-    c.drawString(50, y, "Generated from live CyberGuard SQLite SOC data.")
+    subtitle_style = ParagraphStyle(
+        "CyberGuardSubtitle",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor("#475569"),
+        spaceAfter=18,
+    )
 
-    y -= 40
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "Executive Overview")
+    section_style = ParagraphStyle(
+        "CyberGuardSection",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=14,
+        leading=18,
+        textColor=colors.HexColor("#0f172a"),
+        spaceBefore=12,
+        spaceAfter=8,
+    )
 
-    y -= 25
-    c.setFont("Helvetica", 11)
-    c.drawString(50, y, f"Security Posture Score: {summary['security_posture_score']}/100")
+    body_style = ParagraphStyle(
+        "CyberGuardBody",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=15,
+        textColor=colors.HexColor("#334155"),
+    )
 
-    y -= 18
-    c.drawString(50, y, f"Current Security Posture: {summary['security_posture']}")
+    small_style = ParagraphStyle(
+        "CyberGuardSmall",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#334155"),
+    )
 
-    stats = summary["statistics"]
+    story = []
 
-    y -= 35
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "Key SOC Metrics")
+    story.append(Paragraph("CyberGuard Executive Security Report", title_style))
+    story.append(
+        Paragraph(
+            "Generated from live CyberGuard SQLite SOC data. This report summarises security posture, incident activity, analyst documentation, and audit readiness.",
+            subtitle_style,
+        )
+    )
 
-    metrics = [
-        f"Total Incidents: {stats['total_incidents']}",
-        f"Critical Incidents: {stats['critical_incidents']}",
-        f"High Incidents: {stats['high_incidents']}",
-        f"Open Incidents: {stats['open_incidents']}",
-        f"Resolved Incidents: {stats['resolved_incidents']}",
-        f"Contained Incidents: {stats['contained_incidents']}",
-        f"Analyst Notes: {stats['total_notes']}",
-        f"Audit Events: {stats['audit_events']}",
+    posture_color = "#16a34a"
+    if summary["security_posture"] == "Moderate Risk":
+        posture_color = "#ca8a04"
+    elif summary["security_posture"] == "High Risk":
+        posture_color = "#dc2626"
+
+    overview_data = [
+        ["Security Posture Score", "Current Posture", "Report Status"],
+        [
+            f"{summary['security_posture_score']}/100",
+            summary["security_posture"],
+            "Enabled",
+        ],
     ]
 
-    c.setFont("Helvetica", 11)
-    for metric in metrics:
-        y -= 18
-        c.drawString(70, y, f"- {metric}")
+    overview_table = Table(overview_data, colWidths=[1.9 * inch, 1.9 * inch, 1.9 * inch])
+    overview_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 1), (-1, 1), 15),
+                ("TEXTCOLOR", (1, 1), (1, 1), colors.HexColor(posture_color)),
+                ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#f8fafc")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#94a3b8")),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
 
-    y -= 35
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "Executive Summary")
+    story.append(overview_table)
+    story.append(Spacer(1, 18))
 
-    y -= 22
-    c.setFont("Helvetica", 10)
+    story.append(Paragraph("Key SOC Metrics", section_style))
 
-    summary_text = summary["summary"]
-    wrapped_summary = []
-    words = summary_text.split()
-    line = ""
+    metrics_data = [
+        ["Metric", "Value", "Meaning"],
+        ["Total Incidents", stats["total_incidents"], "All recorded SOC cases"],
+        ["Critical Incidents", stats["critical_incidents"], "Highest-priority cases"],
+        ["High Incidents", stats["high_incidents"], "High-severity cases requiring review"],
+        ["Open Incidents", stats["open_incidents"], "Cases still requiring action"],
+        ["Resolved Incidents", stats["resolved_incidents"], "Cases completed"],
+        ["Contained Incidents", stats["contained_incidents"], "Cases controlled but not fully closed"],
+        ["Analyst Notes", stats["total_notes"], "Investigation documentation entries"],
+        ["Audit Events", stats["audit_events"], "Tracked workflow/accountability actions"],
+    ]
 
-    for word in words:
-        if len(line + " " + word) < 90:
-            line += " " + word
-        else:
-            wrapped_summary.append(line.strip())
-            line = word
+    metrics_table = Table(metrics_data, colWidths=[1.8 * inch, 1.0 * inch, 3.0 * inch])
+    metrics_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (1, 1), (1, -1), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ]
+        )
+    )
 
-    if line:
-        wrapped_summary.append(line.strip())
+    story.append(metrics_table)
+    story.append(Spacer(1, 18))
 
-    for line in wrapped_summary:
-        y -= 15
-        c.drawString(70, y, line)
+    story.append(Paragraph("Executive Summary", section_style))
+    story.append(Paragraph(summary["summary"], body_style))
+    story.append(Spacer(1, 12))
 
-        if y < 90:
-            c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 10)
+    story.append(Paragraph("Top Security Risks", section_style))
 
-    y -= 35
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "Top Security Risks")
-
-    c.setFont("Helvetica", 10)
     for risk in summary["top_risks"]:
-        y -= 16
-        c.drawString(70, y, f"- {risk[:100]}")
+        story.append(Paragraph(f"- {risk}", small_style))
+        story.append(Spacer(1, 4))
 
-        if y < 90:
-            c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 10)
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("Recommended Actions", section_style))
 
-    y -= 35
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "Recommended Actions")
-
-    c.setFont("Helvetica", 10)
     for action in summary["recommended_actions"]:
-        y -= 16
-        c.drawString(70, y, f"- {action[:100]}")
+        story.append(Paragraph(f"- {action}", small_style))
+        story.append(Spacer(1, 4))
 
-        if y < 90:
-            c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 10)
+    story.append(PageBreak())
 
-    y -= 35
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "SOC Maturity Indicators")
+    story.append(Paragraph("SOC Maturity Indicators", section_style))
 
-    c.setFont("Helvetica", 10)
+    maturity_data = [["Area", "Status"]]
     for key, value in summary["maturity_indicators"].items():
-        y -= 16
-        label = key.replace("_", " ").title()
-        c.drawString(70, y, f"- {label}: {value}")
+        maturity_data.append([key.replace("_", " ").title(), value])
 
-        if y < 90:
-            c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 10)
+    maturity_table = Table(maturity_data, colWidths=[2.5 * inch, 3.2 * inch])
+    maturity_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
 
-    c.save()
+    story.append(maturity_table)
+    story.append(Spacer(1, 24))
+
+    story.append(Paragraph("Report Interpretation", section_style))
+    story.append(
+        Paragraph(
+            "This report is generated from the operational CyberGuard SaaS database. Incident, note, audit, MITRE, and dashboard data are intended to support SOC decision-making, accountability, and executive communication. The report should be reviewed alongside analyst evidence and incident case notes before final business action is taken.",
+            body_style,
+        )
+    )
+
+    def add_footer(canvas_obj, doc_obj):
+        canvas_obj.saveState()
+        canvas_obj.setFont("Helvetica", 8)
+        canvas_obj.setFillColor(colors.HexColor("#64748b"))
+        canvas_obj.drawString(50, 25, "CyberGuard SaaS SOC Platform")
+        canvas_obj.drawRightString(560, 25, f"Page {doc_obj.page}")
+        canvas_obj.restoreState()
+
+    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
     return FileResponse(
         path=str(pdf_path),
         filename="cyberguard_executive_report.pdf",
         media_type="application/pdf",
     )
-
-@app.get("/mitre")
-def get_mitre_summary(
-    user=Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
-):
-    return get_mitre_summary_from_db()

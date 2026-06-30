@@ -13,19 +13,50 @@ export default function Executive() {
       .finally(() => setLoading(false));
   }, []);
 
+   async function downloadExecutiveReport() {
+  try {
+    const response = await api.get("/executive-report/pdf", {
+      responseType: "blob",
+    });
+
+    const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+
+    link.href = fileUrl;
+    link.setAttribute("download", "cyberguard_executive_report.pdf");
+
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(fileUrl);
+  } catch (error) {
+    console.error("Failed to download executive report", error);
+    window.alert("Failed to download executive report. Please check your role permissions.");
+  }
+}
   if (loading) {
     return <p className="text-slate-300">Loading executive dashboard...</p>;
   }
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-cyan-400">
-          📈 Executive Security Dashboard
-        </h1>
-        <p className="mt-2 text-slate-400">
-          Management-level cybersecurity posture, operational risk, and recommended action summary.
-        </p>
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h1 className="text-4xl font-bold text-cyan-400">
+            📈 Executive Security Dashboard
+          </h1>
+          <p className="mt-2 text-slate-400">
+            Management-level cybersecurity posture, operational risk, and recommended action summary.
+          </p>
+        </div>
+
+       <button
+  onClick={downloadExecutiveReport}
+  className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-400"
+>
+  Generate Executive Report
+</button>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -58,36 +89,38 @@ export default function Executive() {
         </div>
       </div>
 
-
+      {summary.statistics && (
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-  <div className="rounded-2xl border border-red-500/20 bg-slate-900 p-6">
-    <p className="text-sm text-slate-400">Critical Incidents</p>
-    <h2 className="mt-3 text-4xl font-bold text-red-400">
-      {summary.statistics.critical_incidents}
-    </h2>
-  </div>
+          <div className="rounded-2xl border border-red-500/20 bg-slate-900 p-6">
+            <p className="text-sm text-slate-400">Critical Incidents</p>
+            <h2 className="mt-3 text-4xl font-bold text-red-400">
+              {summary.statistics.critical_incidents}
+            </h2>
+          </div>
 
-  <div className="rounded-2xl border border-yellow-500/20 bg-slate-900 p-6">
-    <p className="text-sm text-slate-400">Open Incidents</p>
-    <h2 className="mt-3 text-4xl font-bold text-yellow-400">
-      {summary.statistics.open_incidents}
-    </h2>
-  </div>
+          <div className="rounded-2xl border border-yellow-500/20 bg-slate-900 p-6">
+            <p className="text-sm text-slate-400">Open Incidents</p>
+            <h2 className="mt-3 text-4xl font-bold text-yellow-400">
+              {summary.statistics.open_incidents}
+            </h2>
+          </div>
 
-  <div className="rounded-2xl border border-green-500/20 bg-slate-900 p-6">
-    <p className="text-sm text-slate-400">Resolved / Contained</p>
-    <h2 className="mt-3 text-4xl font-bold text-green-400">
-      {summary.statistics.resolved_incidents + summary.statistics.contained_incidents}
-    </h2>
-  </div>
+          <div className="rounded-2xl border border-green-500/20 bg-slate-900 p-6">
+            <p className="text-sm text-slate-400">Resolved / Contained</p>
+            <h2 className="mt-3 text-4xl font-bold text-green-400">
+              {summary.statistics.resolved_incidents + summary.statistics.contained_incidents}
+            </h2>
+          </div>
 
-  <div className="rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
-    <p className="text-sm text-slate-400">Audit Events</p>
-    <h2 className="mt-3 text-4xl font-bold text-cyan-400">
-      {summary.statistics.audit_events}
-    </h2>
-  </div>
-</div>
+          <div className="rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
+            <p className="text-sm text-slate-400">Audit Events</p>
+            <h2 className="mt-3 text-4xl font-bold text-cyan-400">
+              {summary.statistics.audit_events}
+            </h2>
+          </div>
+        </div>
+      )}
+
       <section className="mb-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
         <h2 className="text-2xl font-bold text-cyan-300">
           AI Executive Summary
