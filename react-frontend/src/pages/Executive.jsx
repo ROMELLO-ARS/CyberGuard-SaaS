@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 
-export default function Executive() {
+export default function Executive({ showToast }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -9,34 +9,56 @@ export default function Executive() {
     api
       .get("/executive-summary")
       .then((response) => setSummary(response.data))
-      .catch((error) => console.error("Failed to load executive summary", error))
+      .catch((error) => {
+        console.error("Failed to load executive summary", error);
+        showToast?.("Failed to load executive summary.", "error");
+      })
       .finally(() => setLoading(false));
   }, []);
 
-   async function downloadExecutiveReport() {
-  try {
-    const response = await api.get("/executive-report/pdf", {
-      responseType: "blob",
-    });
+  async function downloadExecutiveReport() {
+    try {
+      const response = await api.get("/executive-report/pdf", {
+        responseType: "blob",
+      });
 
-    const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
+      const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
 
-    link.href = fileUrl;
-    link.setAttribute("download", "cyberguard_executive_report.pdf");
+      link.href = fileUrl;
+      link.setAttribute("download", "cyberguard_executive_report.pdf");
 
-    document.body.appendChild(link);
-    link.click();
+      document.body.appendChild(link);
+      link.click();
 
-    link.remove();
-    window.URL.revokeObjectURL(fileUrl);
-  } catch (error) {
-    console.error("Failed to download executive report", error);
-    window.alert("Failed to download executive report. Please check your role permissions.");
+      link.remove();
+      window.URL.revokeObjectURL(fileUrl);
+
+      showToast?.("Executive report downloaded successfully.", "success");
+    } catch (error) {
+      console.error("Failed to download executive report", error);
+      showToast?.(
+        "Failed to download executive report. Please check your role permissions.",
+        "error"
+      );
+    }
   }
-}
+
   if (loading) {
     return <p className="text-slate-300">Loading executive dashboard...</p>;
+  }
+
+  if (!summary) {
+    return (
+      <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6">
+        <h1 className="text-2xl font-bold text-red-300">
+          Executive Summary Unavailable
+        </h1>
+        <p className="mt-2 text-red-100/80">
+          CyberGuard could not load the executive summary.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -51,12 +73,12 @@ export default function Executive() {
           </p>
         </div>
 
-       <button
-  onClick={downloadExecutiveReport}
-  className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-400"
->
-  Generate Executive Report
-</button>
+        <button
+          onClick={downloadExecutiveReport}
+          className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-400"
+        >
+          Generate Executive Report
+        </button>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -108,7 +130,8 @@ export default function Executive() {
           <div className="rounded-2xl border border-green-500/20 bg-slate-900 p-6">
             <p className="text-sm text-slate-400">Resolved / Contained</p>
             <h2 className="mt-3 text-4xl font-bold text-green-400">
-              {summary.statistics.resolved_incidents + summary.statistics.contained_incidents}
+              {summary.statistics.resolved_incidents +
+                summary.statistics.contained_incidents}
             </h2>
           </div>
 

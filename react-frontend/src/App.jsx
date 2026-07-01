@@ -96,7 +96,7 @@ function App() {
     if (activePage === "Threat Queue") return <ThreatQueue />;
     if (activePage === "Incidents") return <Incidents showToast={showToast} />;
     if (activePage === "MITRE Center") return <MitreCenter />;
-    if (activePage === "Executive") return <Executive />;
+    if (activePage === "Executive") return <Executive showToast={showToast} />;
     if (activePage === "Audit Timeline") return <AuditTimeline />;
     if (activePage === "Subscription") return <Subscription />;
     if (activePage === "Settings") return <SettingsPage />;
