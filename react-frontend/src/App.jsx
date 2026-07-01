@@ -55,12 +55,12 @@ const navItems = [
   {
     label: "Subscription",
     icon: CreditCard,
-    roles: ["Administrator"],
+    roles: ["Administrator", "Executive"],
   },
   {
     label: "Settings",
     icon: Settings,
-    roles: ["Administrator"],
+    roles: ["Administrator", "Executive"],
   },
 ];
 

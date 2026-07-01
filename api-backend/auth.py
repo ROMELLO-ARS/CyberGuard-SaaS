@@ -18,6 +18,14 @@ USERS = {
         "password": "Analyst123",
         "role": "SOC Analyst",
     },
+    "manager": {
+        "password": "Manager123",
+        "role": "SOC Manager",
+    },
+    "executive": {
+        "password": "Executive123",
+        "role": "Executive",
+    },
 }
 
 
