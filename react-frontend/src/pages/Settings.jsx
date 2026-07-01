@@ -1,6 +1,41 @@
+import { useEffect, useState } from "react";
+import api from "../services/api";
+
 export default function Settings() {
   const username = localStorage.getItem("cyberguard_user") || "Unknown";
   const role = localStorage.getItem("cyberguard_role") || "Unknown";
+  const token = localStorage.getItem("cyberguard_token");
+
+  const [apiStatus, setApiStatus] = useState("Checking...");
+  const [apiMessage, setApiMessage] = useState("");
+  const [lastChecked, setLastChecked] = useState("");
+
+  async function checkApiHealth() {
+    try {
+      setApiStatus("Checking...");
+      const response = await api.get("/");
+
+      setApiStatus("Online");
+      setApiMessage(response.data.message || "Backend is running successfully.");
+      setLastChecked(new Date().toLocaleString());
+    } catch (error) {
+      console.error("Failed to check API health", error);
+      setApiStatus("Offline");
+      setApiMessage("Unable to reach the FastAPI backend.");
+      setLastChecked(new Date().toLocaleString());
+    }
+  }
+
+  useEffect(() => {
+    checkApiHealth();
+  }, []);
+
+  const roleAccess = {
+    Administrator: "Full platform access including audit logs, executive reports, incidents, MITRE, settings, and subscriptions.",
+    "SOC Analyst": "Operational SOC access including threat queue, incidents, MITRE review, notes, and limited protected-page visibility.",
+    "SOC Manager": "SOC oversight access including dashboard, incidents, MITRE visibility, and operational monitoring.",
+    Executive: "Executive reporting access including dashboard, executive summary, reports, subscriptions, and settings.",
+  };
 
   return (
     <div>
@@ -9,7 +44,7 @@ export default function Settings() {
           ⚙ Settings
         </h1>
         <p className="mt-2 text-slate-400">
-          Manage CyberGuard account, security, and platform preferences.
+          Manage CyberGuard account, session, API health, and platform security configuration.
         </p>
       </div>
 
@@ -40,6 +75,15 @@ export default function Settings() {
 
             <div className="rounded-xl bg-slate-800 p-4">
               <p className="text-xs uppercase tracking-wide text-slate-500">
+                Role Access Summary
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {roleAccess[role] || "No role access description available."}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-800 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
                 Current Plan
               </p>
               <p className="mt-2 font-semibold text-green-300">
@@ -51,17 +95,37 @@ export default function Settings() {
 
         <section className="rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
           <h2 className="text-2xl font-bold text-cyan-300">
-            Security Controls
+            Session Security
           </h2>
 
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between rounded-xl bg-slate-800 p-4">
               <div>
                 <p className="font-semibold text-white">
-                  API Authentication
+                  Session Token
                 </p>
                 <p className="text-sm text-slate-400">
-                  Login token stored for current session.
+                  Login token stored in local browser session storage.
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                  token
+                    ? "bg-green-500/10 text-green-300"
+                    : "bg-red-500/10 text-red-300"
+                }`}
+              >
+                {token ? "Active" : "Missing"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl bg-slate-800 p-4">
+              <div>
+                <p className="font-semibold text-white">
+                  API Authentication Headers
+                </p>
+                <p className="text-sm text-slate-400">
+                  Axios sends X-Username and X-Role to protected backend endpoints.
                 </p>
               </div>
               <span className="rounded-full bg-green-500/10 px-3 py-1 text-sm font-semibold text-green-300">
@@ -72,14 +136,14 @@ export default function Settings() {
             <div className="flex items-center justify-between rounded-xl bg-slate-800 p-4">
               <div>
                 <p className="font-semibold text-white">
-                  Role-Based Access Control
+                  Backend RBAC
                 </p>
                 <p className="text-sm text-slate-400">
-                  Sidebar access is filtered by user role.
+                  FastAPI checks role permissions before returning protected data.
                 </p>
               </div>
               <span className="rounded-full bg-green-500/10 px-3 py-1 text-sm font-semibold text-green-300">
-                Active
+                Enforced
               </span>
             </div>
 
@@ -89,7 +153,7 @@ export default function Settings() {
                   Audit Logging
                 </p>
                 <p className="text-sm text-slate-400">
-                  Analyst activity can be traced in the audit timeline.
+                  Incident actions and notes are recorded for accountability.
                 </p>
               </div>
               <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-sm font-semibold text-cyan-300">
@@ -101,11 +165,25 @@ export default function Settings() {
       </div>
 
       <section className="mt-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
-        <h2 className="text-2xl font-bold text-cyan-300">
-          Platform Status
-        </h2>
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-cyan-300">
+              Platform Status
+            </h2>
+            <p className="mt-2 text-slate-400">
+              Live connection status for the CyberGuard React frontend and FastAPI backend.
+            </p>
+          </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <button
+            onClick={checkApiHealth}
+            className="rounded-lg border border-cyan-500/30 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/10"
+          >
+            Recheck API
+          </button>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
           <div className="rounded-xl bg-slate-800 p-4">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Frontend
@@ -119,8 +197,25 @@ export default function Settings() {
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Backend
             </p>
-            <p className="mt-2 font-semibold text-green-300">
-              FastAPI Online
+            <p
+              className={`mt-2 font-semibold ${
+                apiStatus === "Online"
+                  ? "text-green-300"
+                  : apiStatus === "Offline"
+                  ? "text-red-300"
+                  : "text-yellow-300"
+              }`}
+            >
+              FastAPI {apiStatus}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-800 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Backend URL
+            </p>
+            <p className="mt-2 break-all font-semibold text-cyan-300">
+              http://127.0.0.1:8000
             </p>
           </div>
 
@@ -130,6 +225,56 @@ export default function Settings() {
             </p>
             <p className="mt-2 font-semibold text-cyan-300">
               SaaS Ready
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            API Health Message
+          </p>
+          <p className="mt-2 text-sm text-slate-300">
+            {apiMessage || "No API health message available."}
+          </p>
+
+          {lastChecked && (
+            <p className="mt-2 text-xs text-slate-500">
+              Last checked: {lastChecked}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
+        <h2 className="text-2xl font-bold text-cyan-300">
+          Platform Capabilities
+        </h2>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-xl bg-slate-800 p-4">
+            <p className="font-semibold text-white">
+              Persistent SQLite Storage
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              Incidents, notes, metrics, audit logs, and executive reporting use stored backend data.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-800 p-4">
+            <p className="font-semibold text-white">
+              Executive PDF Reports
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              Executive reports are generated from live SOC data with role-protected access.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-800 p-4">
+            <p className="font-semibold text-white">
+              MITRE ATT&CK Mapping
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              Incidents are mapped to ATT&CK techniques, tactics, recommendations, and related cases.
             </p>
           </div>
         </div>
