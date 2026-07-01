@@ -8,7 +8,7 @@ function severityColor(severity) {
   return "text-slate-300 bg-slate-500/10 border-slate-500/30";
 }
 
-export default function Incidents() {
+export default function Incidents({ showToast }) {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIncident, setSelectedIncident] = useState(null);
@@ -20,17 +20,20 @@ export default function Incidents() {
     api
       .get("/incidents")
       .then((response) => setIncidents(response.data))
-      .catch((error) => console.error("Failed to load incidents", error))
+      .catch((error) => {
+        console.error("Failed to load incidents", error);
+        showToast?.("Failed to load incidents.", "error");
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [showToast]);
 
   async function updateIncidentStatus(incidentId, newStatus) {
     try {
       await api.patch(`/incidents/${incidentId}/status`, {
-  status: newStatus,
-  username: localStorage.getItem("cyberguard_user") || "system",
-  role: localStorage.getItem("cyberguard_role") || "System",
-});
+        status: newStatus,
+        username: localStorage.getItem("cyberguard_user") || "system",
+        role: localStorage.getItem("cyberguard_role") || "System",
+      });
 
       setIncidents((currentIncidents) =>
         currentIncidents.map((incident) =>
@@ -46,9 +49,11 @@ export default function Incidents() {
           status: newStatus,
         }));
       }
+
+      showToast?.("Incident status updated successfully.", "success");
     } catch (error) {
       console.error("Failed to update incident status", error);
-      window.alert("Failed to update incident status.");
+      showToast?.("Failed to update incident status.", "error");
     }
   }
 
@@ -59,7 +64,7 @@ export default function Incidents() {
       setIncidentNotes(response.data);
     } catch (error) {
       console.error("Failed to load incident notes", error);
-      window.alert("Failed to load incident notes.");
+      showToast?.("Failed to load incident notes.", "error");
     } finally {
       setNotesLoading(false);
     }
@@ -69,7 +74,7 @@ export default function Incidents() {
     if (!selectedIncident) return;
 
     if (!newNote.trim()) {
-      window.alert("Please enter a note before saving.");
+      showToast?.("Please enter a note before saving.", "error");
       return;
     }
 
@@ -81,9 +86,10 @@ export default function Incidents() {
 
       setNewNote("");
       await loadIncidentNotes(selectedIncident.id);
+      showToast?.("Incident note saved successfully.", "success");
     } catch (error) {
       console.error("Failed to save incident note", error);
-      window.alert("Failed to save incident note.");
+      showToast?.("Failed to save incident note.", "error");
     }
   }
 

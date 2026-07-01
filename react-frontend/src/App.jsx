@@ -20,6 +20,7 @@ import Executive from "./pages/Executive";
 import AuditTimeline from "./pages/AuditTimeline";
 import Subscription from "./pages/Subscription";
 import SettingsPage from "./pages/Settings";
+import Toast from "./components/Toast";
 
 const navItems = [
   {
@@ -64,21 +65,9 @@ const navItems = [
   },
 ];
 
-function renderPage(activePage) {
-  if (activePage === "Dashboard") return <Dashboard />;
-  if (activePage === "Threat Queue") return <ThreatQueue />;
-  if (activePage === "Incidents") return <Incidents />;
-  if (activePage === "MITRE Center") return <MitreCenter />;
-  if (activePage === "Executive") return <Executive />;
-  if (activePage === "Audit Timeline") return <AuditTimeline />;
-  if (activePage === "Subscription") return <Subscription />;
-  if (activePage === "Settings") return <SettingsPage />;
-
-  return <Dashboard />;
-}
-
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
+  const [toast, setToast] = useState(null);
 
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem("cyberguard_token");
@@ -93,6 +82,27 @@ function App() {
       role,
     };
   });
+
+  function showToast(message, type = "info") {
+    setToast({ message, type });
+
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  }
+
+  function renderPage() {
+    if (activePage === "Dashboard") return <Dashboard />;
+    if (activePage === "Threat Queue") return <ThreatQueue />;
+    if (activePage === "Incidents") return <Incidents showToast={showToast} />;
+    if (activePage === "MITRE Center") return <MitreCenter />;
+    if (activePage === "Executive") return <Executive />;
+    if (activePage === "Audit Timeline") return <AuditTimeline />;
+    if (activePage === "Subscription") return <Subscription />;
+    if (activePage === "Settings") return <SettingsPage />;
+
+    return <Dashboard />;
+  }
 
   const allowedNavItems = useMemo(() => {
     if (!user) return [];
@@ -165,6 +175,7 @@ function App() {
               localStorage.clear();
               setUser(null);
               setActivePage("Dashboard");
+              showToast("Logged out successfully.", "info");
             }}
             className="mt-8 w-full rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10"
           >
@@ -172,8 +183,10 @@ function App() {
           </button>
         </aside>
 
-        <main className="flex-1 p-8">{renderPage(activePage)}</main>
+        <main className="flex-1 p-8">{renderPage()}</main>
       </div>
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
