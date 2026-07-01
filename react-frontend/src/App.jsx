@@ -50,7 +50,7 @@ const navItems = [
   {
     label: "Audit Timeline",
     icon: ScrollText,
-    roles: ["Administrator", "SOC Manager"],
+    roles: ["Administrator", "SOC Analyst", "SOC Manager"],
   },
   {
     label: "Subscription",

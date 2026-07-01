@@ -1,21 +1,38 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import AccessDenied from "../components/AccessDenied";
 
 export default function AuditTimeline() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(null);
 
   useEffect(() => {
     api
       .get("/audit-logs")
       .then((response) => setLogs(response.data))
-      .catch((error) => console.error("Failed to load audit logs", error))
+      .catch((error) => {
+  if (error.response?.status === 403) {
+    setAccessDenied(error.response.data.detail);
+  } else {
+    console.error("Failed to load audit logs", error);
+  }
+})
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return <p className="text-slate-300">Loading audit timeline...</p>;
   }
+
+  if (accessDenied) {
+  return (
+    <AccessDenied
+      message={accessDenied.message}
+      requiredRoles={accessDenied.required_roles}
+    />
+  );
+}
 
   return (
     <div>
