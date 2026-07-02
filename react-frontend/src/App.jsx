@@ -9,6 +9,7 @@ import {
   ScrollText,
   CreditCard,
   Settings,
+  Presentation,
 } from "lucide-react";
 
 import Login from "./pages/Login";
@@ -21,6 +22,7 @@ import AuditTimeline from "./pages/AuditTimeline";
 import Subscription from "./pages/Subscription";
 import SettingsPage from "./pages/Settings";
 import Toast from "./components/Toast";
+import DemoGuide from "./pages/DemoGuide";
 
 const navItems = [
   {
@@ -63,6 +65,11 @@ const navItems = [
     icon: Settings,
     roles: ["Administrator", "Executive"],
   },
+  {
+  label: "Demo Guide",
+  icon: Presentation,
+  roles: ["Administrator", "SOC Analyst", "SOC Manager", "Executive"],
+},
 ];
 
 function App() {
@@ -100,6 +107,7 @@ function App() {
     if (activePage === "Audit Timeline") return <AuditTimeline showToast={showToast} />;
     if (activePage === "Subscription") return <Subscription />;
     if (activePage === "Settings") return <SettingsPage showToast={showToast} />;
+    if (activePage === "Demo Guide") return <DemoGuide />;
 
     return <Dashboard />;
   }
