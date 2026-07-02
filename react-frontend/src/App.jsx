@@ -93,7 +93,7 @@ function App() {
 
   function renderPage() {
     if (activePage === "Dashboard") return <Dashboard />;
-    if (activePage === "Threat Queue") return <ThreatQueue />;
+    if (activePage === "Threat Queue") return <ThreatQueue showToast={showToast} />;
     if (activePage === "Incidents") return <Incidents showToast={showToast} />;
     if (activePage === "MITRE Center") return <MitreCenter />;
     if (activePage === "Executive") return <Executive showToast={showToast} />;

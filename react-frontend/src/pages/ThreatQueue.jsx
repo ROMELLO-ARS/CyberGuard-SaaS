@@ -8,9 +8,10 @@ function riskBadgeColor(risk) {
   return "border-slate-500/30 bg-slate-500/10 text-slate-300";
 }
 
-export default function ThreatQueue() {
+export default function ThreatQueue({ showToast }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [creatingIncidentId, setCreatingIncidentId] = useState(null);
 
   useEffect(() => {
     api
@@ -20,35 +21,43 @@ export default function ThreatQueue() {
       })
       .catch((error) => {
         console.error("Failed to load alerts", error);
+        showToast?.("Failed to load threat queue alerts.", "error");
       })
       .finally(() => {
         setLoading(false);
       });
   }, []);
 
+  async function createIncident(selectedAlert) {
+    try {
+      setCreatingIncidentId(selectedAlert.id);
+
+      await api.post("/incidents", {
+        title: selectedAlert.signature,
+        severity: selectedAlert.risk_level,
+        assigned_to: localStorage.getItem("cyberguard_user") || "analyst",
+        source_ip: selectedAlert.src_ip,
+      });
+
+      showToast?.("Incident created successfully from alert.", "success");
+    } catch (error) {
+      console.error("Failed to create incident", error);
+      showToast?.("Failed to create incident from alert.", "error");
+    } finally {
+      setCreatingIncidentId(null);
+    }
+  }
+
   if (loading) {
     return <p className="text-slate-300">Loading threat queue...</p>;
   }
-async function createIncident(selectedAlert) {
-  try {
-    await api.post("/incidents", {
-      title: selectedAlert.signature,
-      severity: selectedAlert.risk_level,
-      assigned_to: localStorage.getItem("cyberguard_user") || "analyst",
-      source_ip: selectedAlert.src_ip,
-    });
-
-    window.alert("Incident created successfully.");
-  } catch (error) {
-    console.error("Failed to create incident", error);
-    window.alert("Failed to create incident.");
-  }
-}
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-cyan-400">🚨 Threat Queue</h1>
+        <h1 className="text-4xl font-bold text-cyan-400">
+          🚨 Threat Queue
+        </h1>
         <p className="mt-2 text-slate-400">
           Prioritised SOC alerts enriched with MITRE ATT&CK mapping and analyst recommendations.
         </p>
@@ -86,22 +95,30 @@ async function createIncident(selectedAlert) {
 
                 <td className="p-4 text-slate-300">{alert.src_ip}</td>
                 <td className="p-4 text-slate-300">{alert.dest_ip}</td>
-                <td className="p-4 font-medium text-white">{alert.signature}</td>
+                <td className="p-4 font-medium text-white">
+                  {alert.signature}
+                </td>
 
                 <td className="p-4">
                   <div className="text-cyan-300">{alert.mitre_id}</div>
-                  <div className="text-xs text-slate-500">{alert.mitre_tactic}</div>
+                  <div className="text-xs text-slate-500">
+                    {alert.mitre_tactic}
+                  </div>
                 </td>
 
                 <td className="p-4 text-slate-300">{alert.status}</td>
+
                 <td className="p-4">
-  <button
-    onClick={() => createIncident(alert)}
-    className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
-  >
-    Create Incident
-  </button>
-</td>
+                  <button
+                    onClick={() => createIncident(alert)}
+                    disabled={creatingIncidentId === alert.id}
+                    className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {creatingIncidentId === alert.id
+                      ? "Creating..."
+                      : "Create Incident"}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -109,7 +126,9 @@ async function createIncident(selectedAlert) {
       </div>
 
       <div className="mt-6 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
-        <h2 className="text-xl font-bold text-cyan-300">AI Analyst Recommendation</h2>
+        <h2 className="text-xl font-bold text-cyan-300">
+          AI Analyst Recommendation
+        </h2>
         <p className="mt-3 text-slate-300">
           Start with Critical alerts, validate MITRE mappings, and create incident cases for confirmed high-risk activity.
         </p>
