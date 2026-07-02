@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 
-export default function Settings() {
+export default function Settings({ showToast }) {
   const username = localStorage.getItem("cyberguard_user") || "Unknown";
   const role = localStorage.getItem("cyberguard_role") || "Unknown";
   const token = localStorage.getItem("cyberguard_token");
@@ -18,11 +18,13 @@ export default function Settings() {
       setApiStatus("Online");
       setApiMessage(response.data.message || "Backend is running successfully.");
       setLastChecked(new Date().toLocaleString());
+      showToast?.("API connection verified successfully.", "success");
     } catch (error) {
       console.error("Failed to check API health", error);
       setApiStatus("Offline");
       setApiMessage("Unable to reach the FastAPI backend.");
       setLastChecked(new Date().toLocaleString());
+      showToast?.("API connection failed. Backend may be offline.", "error");
     }
   }
 

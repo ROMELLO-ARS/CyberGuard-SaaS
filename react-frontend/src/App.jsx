@@ -95,11 +95,11 @@ function App() {
     if (activePage === "Dashboard") return <Dashboard />;
     if (activePage === "Threat Queue") return <ThreatQueue showToast={showToast} />;
     if (activePage === "Incidents") return <Incidents showToast={showToast} />;
-    if (activePage === "MITRE Center") return <MitreCenter />;
+    if (activePage === "MITRE Center") return <MitreCenter showToast={showToast} />;
     if (activePage === "Executive") return <Executive showToast={showToast} />;
-    if (activePage === "Audit Timeline") return <AuditTimeline />;
+    if (activePage === "Audit Timeline") return <AuditTimeline showToast={showToast} />;
     if (activePage === "Subscription") return <Subscription />;
-    if (activePage === "Settings") return <SettingsPage />;
+    if (activePage === "Settings") return <SettingsPage showToast={showToast} />;
 
     return <Dashboard />;
   }
