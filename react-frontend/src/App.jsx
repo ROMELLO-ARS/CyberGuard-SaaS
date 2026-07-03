@@ -25,6 +25,7 @@ import SettingsPage from "./pages/Settings";
 import Toast from "./components/Toast";
 import DemoGuide from "./pages/DemoGuide";
 import LogIngestion from "./pages/LogIngestion";
+import AIAssistant from "./components/AIAssistant";
 
 
 const navItems = [
@@ -203,6 +204,9 @@ function App() {
 
         <main className="flex-1 p-8">{renderPage()}</main>
       </div>
+
+      <AIAssistant showToast={showToast} />
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
