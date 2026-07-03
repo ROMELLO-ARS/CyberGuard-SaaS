@@ -90,6 +90,9 @@ class LogIngestRequest(BaseModel):
     message: str
     raw_log: str
 
+class AssistantRequest(BaseModel):
+    message: str
+
 
 @app.get("/")
 def health_check():
@@ -353,6 +356,113 @@ def get_audit_logs(
 ):
     return get_audit_logs_from_db()
 
+def generate_ai_assistant_response(user_message: str):
+    message = user_message.lower()
+
+    metrics = get_real_metrics_from_db()
+    executive_summary = get_executive_summary_from_db()
+    mitre_summary = get_mitre_summary_from_db()
+    incidents = get_incidents_from_db()
+    logs = get_ingested_logs_from_db()
+
+    critical_incidents = metrics.get("critical_alerts", 0)
+    open_incidents = metrics.get("open_incidents", 0)
+    total_incidents = metrics.get("total_incidents", 0)
+    security_posture = metrics.get("security_posture", "Unknown")
+    soc_status = metrics.get("soc_status", "Unknown")
+
+    if "risk" in message or "posture" in message or "summary" in message:
+        return (
+            f"CyberGuard currently reports {total_incidents} total incident(s), "
+            f"{critical_incidents} critical incident(s), and {open_incidents} open incident(s). "
+            f"The current security posture is {security_posture}, and the SOC status is {soc_status}. "
+            f"I recommend prioritising Critical and High severity incidents first, then reviewing unresolved Open cases."
+        )
+
+    if "prioritize" in message or "priority" in message or "investigate" in message:
+        critical = [
+            incident for incident in incidents
+            if incident.get("severity") == "Critical" and incident.get("status") != "Resolved"
+        ]
+
+        if critical:
+            first = critical[0]
+            return (
+                f"Start with the Critical incident: '{first['title']}' from source IP {first['source_ip']}. "
+                f"It is currently marked as {first['status']}. Validate the source, check related logs, "
+                f"document analyst findings, and move the case through containment or resolution."
+            )
+
+        return (
+            "There are no unresolved Critical incidents at the moment. "
+            "Next, review High severity incidents, then Medium severity items with suspicious source IPs or repeated activity."
+        )
+
+    if "mitre" in message or "attack" in message or "technique" in message:
+        if mitre_summary:
+            top = mitre_summary[0]
+            return (
+                f"The strongest MITRE mapping currently is {top['id']} — {top['technique']} under the {top['tactic']} tactic. "
+                f"It appears in {top['count']} related incident(s). Recommended action: {top['recommendation']}"
+            )
+
+        return (
+            "No MITRE mappings are available yet. Create incidents from Threat Queue or Log Ingestion so CyberGuard can map activity to ATT&CK techniques."
+        )
+
+    if "log" in message or "ingestion" in message or "traffic" in message:
+        return (
+            f"CyberGuard has ingested {len(logs)} log event(s). "
+            "The Log Ingestion module supports realistic firewall, IDS, endpoint, Windows Event, and network telemetry workflows. "
+            "For a real-world deployment, this can be extended to syslog, Suricata EVE JSON, Zeek logs, and packet capture analysis."
+        )
+
+    if "demo" in message or "guide" in message or "present" in message:
+        return (
+            "Recommended demo flow: log in as Administrator, review Dashboard metrics, ingest a realistic log, "
+            "create an incident from that log, update the incident status, add an analyst note, review the Audit Timeline, "
+            "check MITRE mapping, generate the Executive PDF report, then switch roles to demonstrate RBAC."
+        )
+
+    if "executive" in message or "report" in message:
+        return (
+            f"The executive summary reports a security posture of {executive_summary['security_posture']} "
+            f"with a score of {executive_summary['security_posture_score']}/100. "
+            "Use the Executive page to generate a PDF report for management-level decision support."
+        )
+
+    if "rbac" in message or "role" in message or "permission" in message:
+        return (
+            "CyberGuard uses role-based access control across both the frontend and backend. "
+            "Administrators have full access, SOC Analysts can triage threats and incidents, SOC Managers have operational visibility, "
+            "and Executives can access reporting, subscriptions, and settings."
+        )
+
+    return (
+        "I am CyberGuard AI, your SOC assistant. I can help summarize risk, recommend which incident to investigate, "
+        "explain MITRE mappings, guide your demo, describe log ingestion, and support executive reporting."
+    )
+
+@app.post(
+    "/ai/assistant",
+    dependencies=[
+        Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager", "Executive"]))
+    ],
+)
+def ai_assistant(request: AssistantRequest):
+    response = generate_ai_assistant_response(request.message)
+
+    create_audit_log(
+        username="assistant",
+        role="AI",
+        action="AI Assistant Used",
+        details=f"Assistant prompt received: {request.message[:100]}",
+    )
+
+    return {
+        "response": response
+    }
+
 
 @app.get("/mitre")
 def get_mitre_summary(
@@ -582,3 +692,4 @@ def generate_executive_report_pdf(
         filename="cyberguard_executive_report.pdf",
         media_type="application/pdf",
     )
+
