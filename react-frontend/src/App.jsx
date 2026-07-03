@@ -10,6 +10,7 @@ import {
   CreditCard,
   Settings,
   Presentation,
+  DatabaseZap,
 } from "lucide-react";
 
 import Login from "./pages/Login";
@@ -23,6 +24,8 @@ import Subscription from "./pages/Subscription";
 import SettingsPage from "./pages/Settings";
 import Toast from "./components/Toast";
 import DemoGuide from "./pages/DemoGuide";
+import LogIngestion from "./pages/LogIngestion";
+
 
 const navItems = [
   {
@@ -35,6 +38,11 @@ const navItems = [
     icon: Siren,
     roles: ["Administrator", "SOC Analyst", "SOC Manager"],
   },
+  {
+  label: "Log Ingestion",
+  icon: DatabaseZap,
+  roles: ["Administrator", "SOC Analyst", "SOC Manager"],
+},
   {
     label: "Incidents",
     icon: FolderOpen,
@@ -70,6 +78,7 @@ const navItems = [
   icon: Presentation,
   roles: ["Administrator", "SOC Analyst", "SOC Manager", "Executive"],
 },
+
 ];
 
 function App() {
@@ -108,6 +117,7 @@ function App() {
     if (activePage === "Subscription") return <Subscription />;
     if (activePage === "Settings") return <SettingsPage showToast={showToast} />;
     if (activePage === "Demo Guide") return <DemoGuide />;
+    if (activePage === "Log Ingestion") return <LogIngestion showToast={showToast} />;
 
     return <Dashboard />;
   }

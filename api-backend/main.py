@@ -1,6 +1,6 @@
 from pathlib import Path
 from reportlab.lib import colors
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -32,7 +32,10 @@ from database import (
     get_dashboard_analytics_from_db,
     get_executive_summary_from_db,
     get_mitre_summary_from_db,
-)
+    create_ingested_log_in_db,
+    get_ingested_logs_from_db,
+    get_ingested_log_by_id,
+    )
 
 
 app = FastAPI(
@@ -77,6 +80,16 @@ class IncidentNoteCreateRequest(BaseModel):
     analyst: str
     note: str
 
+class LogIngestRequest(BaseModel):
+    source_type: str = "manual"
+    event_time: str | None = None
+    source_ip: str | None = None
+    destination_ip: str | None = None
+    event_type: str | None = None
+    severity: str = "Medium"
+    message: str
+    raw_log: str
+
 
 @app.get("/")
 def health_check():
@@ -103,6 +116,87 @@ def get_executive_summary(
 ):
     return get_executive_summary_from_db()
 
+@app.get(
+    "/logs",
+    dependencies=[
+        Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+    ],
+)
+def get_logs():
+    return get_ingested_logs_from_db()
+
+
+@app.post(
+    "/logs/ingest",
+    dependencies=[
+        Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+    ],
+)
+def ingest_log(request: LogIngestRequest):
+    log_id = create_ingested_log_in_db(
+        source_type=request.source_type,
+        event_time=request.event_time,
+        source_ip=request.source_ip,
+        destination_ip=request.destination_ip,
+        event_type=request.event_type,
+        severity=request.severity,
+        message=request.message,
+        raw_log=request.raw_log,
+    )
+
+    create_audit_log(
+        username="system",
+        role="System",
+        action="Log Ingested",
+        details=f"New {request.source_type} log ingested with severity {request.severity}.",
+    )
+
+    return {
+        "message": "Log ingested successfully",
+        "log_id": log_id,
+    }
+
+
+@app.post(
+    "/logs/{log_id}/create-incident",
+    dependencies=[
+        Depends(require_roles(["Administrator", "SOC Analyst", "SOC Manager"]))
+    ],
+)
+def create_incident_from_log(log_id: int):
+    log = get_ingested_log_by_id(log_id)
+
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+
+    incident_title = f"{log['event_type'] or 'Security Log Event'} - {log['message'][:60]}"
+    incident_severity = log["severity"] or "Medium"
+    incident_assigned_to = "SOC Analyst"
+    incident_source_ip = log["source_ip"] or "Unknown"
+
+    incident_id = create_incident_in_db(
+        incident_title,
+        incident_severity,
+        incident_assigned_to,
+        incident_source_ip,
+    )
+
+    create_audit_log(
+        username="system",
+        role="System",
+        action="Incident Created From Log",
+        details=f"Incident ID {incident_id} created from ingested log ID {log_id}.",
+    )
+
+    return {
+        "id": incident_id,
+        "title": incident_title,
+        "severity": incident_severity,
+        "assigned_to": incident_assigned_to,
+        "source_ip": incident_source_ip,
+        "status": "Open",
+        "message": "Incident created from log successfully",
+    }
 
 @app.get("/alerts")
 def get_alerts(

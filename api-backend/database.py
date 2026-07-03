@@ -54,6 +54,23 @@ def init_db():
         """
     )
 
+    cursor.execute(
+    """
+    CREATE TABLE IF NOT EXISTS ingested_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_type TEXT NOT NULL,
+        event_time TEXT,
+        source_ip TEXT,
+        destination_ip TEXT,
+        event_type TEXT,
+        severity TEXT,
+        message TEXT NOT NULL,
+        raw_log TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """
+)
+
     conn.commit()
     conn.close()
 
@@ -581,3 +598,89 @@ def get_mitre_summary_from_db():
             summary[mitre_id]["severity"] = "High"
 
     return list(summary.values())
+
+  
+def create_ingested_log_in_db(
+    source_type,
+    event_time,
+    source_ip,
+    destination_ip,
+    event_type,
+    severity,
+    message,
+    raw_log,
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO ingested_logs (
+            source_type,
+            event_time,
+            source_ip,
+            destination_ip,
+            event_type,
+            severity,
+            message,
+            raw_log
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            source_type,
+            event_time,
+            source_ip,
+            destination_ip,
+            event_type,
+            severity,
+            message,
+            raw_log,
+        ),
+    )
+
+    conn.commit()
+    log_id = cursor.lastrowid
+    conn.close()
+
+    return log_id
+
+
+def get_ingested_logs_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM ingested_logs
+        ORDER BY id DESC
+        """
+    )
+
+    logs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return logs
+
+
+def get_ingested_log_by_id(log_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM ingested_logs
+        WHERE id = ?
+        """,
+        (log_id,),
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return dict(row)
