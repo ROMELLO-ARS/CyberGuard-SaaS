@@ -11,6 +11,7 @@ import {
   Settings,
   Presentation,
   DatabaseZap,
+  HomeIcon,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Login from "./pages/Login";
@@ -26,9 +27,15 @@ import Toast from "./components/Toast";
 import DemoGuide from "./pages/DemoGuide";
 import LogIngestion from "./pages/LogIngestion";
 import AIAssistant from "./components/AIAssistant";
+import Home from "./pages/Home";
 
 
 const navItems = [
+  {
+  label: "Home",
+  icon: HomeIcon,
+  roles: ["Administrator", "SOC Analyst", "SOC Manager", "Executive"],
+},
   {
     label: "Dashboard",
     icon: LayoutDashboard,
@@ -83,7 +90,7 @@ const navItems = [
 ];
 
 function App() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [activePage, setActivePage] = useState("Home");
   const [toast, setToast] = useState(null);
 
   const [user, setUser] = useState(() => {
@@ -109,6 +116,7 @@ function App() {
   }
 
   function renderPage() {
+    if (activePage === "Home") return <Home setActivePage={setActivePage} />;
     if (activePage === "Dashboard") return <Dashboard />;
     if (activePage === "Threat Queue") return <ThreatQueue showToast={showToast} />;
     if (activePage === "Incidents") return <Incidents showToast={showToast} />;
@@ -193,7 +201,7 @@ function App() {
             onClick={() => {
               localStorage.clear();
               setUser(null);
-              setActivePage("Dashboard");
+              setActivePage("Home");
               showToast("Logged out successfully.", "info");
             }}
             className="mt-8 w-full rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10"
