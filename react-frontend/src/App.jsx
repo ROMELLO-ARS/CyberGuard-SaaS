@@ -12,7 +12,7 @@ import {
   Presentation,
   DatabaseZap,
 } from "lucide-react";
-
+import { AnimatePresence, motion } from "framer-motion";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ThreatQueue from "./pages/ThreatQueue";
@@ -202,7 +202,19 @@ function App() {
           </button>
         </aside>
 
-        <main className="flex-1 p-8">{renderPage()}</main>
+        <main className="flex-1 overflow-hidden p-8">
+  <AnimatePresence mode="wait">
+    <motion.div
+      key={activePage}
+      initial={{ opacity: 0, y: 18, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -12, scale: 0.98 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
+      {renderPage()}
+    </motion.div>
+  </AnimatePresence>
+</main>
       </div>
 
       <AIAssistant showToast={showToast} />
