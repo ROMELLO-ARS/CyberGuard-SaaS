@@ -93,6 +93,8 @@ export default function Dashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("");
+  const [liveMode, setLiveMode] = useState(false);
+  const [liveRefreshCount, setLiveRefreshCount] = useState(0);
 
   async function loadDashboard() {
     try {
@@ -115,6 +117,17 @@ export default function Dashboard() {
     loadDashboard();
   }, []);
 
+  useEffect(() => {
+  if (!liveMode) return;
+
+  const intervalId = setInterval(() => {
+    loadDashboard();
+    setLiveRefreshCount((current) => current + 1);
+  }, 10000);
+
+  return () => clearInterval(intervalId);
+}, [liveMode]);
+
   if (!metrics || !analytics) {
     return <DashboardSkeleton />;
   }
@@ -130,20 +143,38 @@ export default function Dashboard() {
             Live security metrics, incident trends, analyst workload, audit activity, and threat distribution from CyberGuard data.
           </p>
 
-          {lastUpdated && (
-            <p className="mt-2 text-xs text-slate-500">
-              Last updated: {lastUpdated}
-            </p>
-          )}
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+  {lastUpdated && <span>Last updated: {lastUpdated}</span>}
+
+  {liveMode && (
+    <span className="inline-flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 font-semibold text-green-300">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-green-300"></span>
+      Auto-refreshing every 10 seconds · Refresh count: {liveRefreshCount}
+    </span>
+  )}
+</div>
         </div>
 
-        <button
-          onClick={loadDashboard}
-          disabled={refreshing}
-          className="rounded-xl border border-cyan-500/30 px-5 py-3 text-sm font-bold text-cyan-300 hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {refreshing ? "Refreshing..." : "Refresh Dashboard"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+  <button
+    onClick={() => setLiveMode((current) => !current)}
+    className={`rounded-xl px-5 py-3 text-sm font-bold transition ${
+      liveMode
+        ? "border border-green-500/30 bg-green-500/10 text-green-300"
+        : "border border-slate-600 text-slate-300 hover:bg-slate-900"
+    }`}
+  >
+    {liveMode ? "Live Monitoring: ON" : "Live Monitoring: OFF"}
+  </button>
+
+  <button
+    onClick={loadDashboard}
+    disabled={refreshing}
+    className="rounded-xl border border-cyan-500/30 px-5 py-3 text-sm font-bold text-cyan-300 hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+  >
+    {refreshing ? "Refreshing..." : "Refresh Dashboard"}
+  </button>
+</div>
       </div>
 
       <motion.section
