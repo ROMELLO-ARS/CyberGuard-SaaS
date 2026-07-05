@@ -304,7 +304,76 @@ export default function Settings({ showToast }) {
           )}
         </div>
       </section>
+        <section className="mt-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
+  <h2 className="text-2xl font-bold text-cyan-300">
+    Database Architecture
+  </h2>
 
+  <p className="mt-2 text-slate-400">
+    CyberGuard is currently running in safe hybrid database mode for development and demonstration.
+  </p>
+
+  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+    <div className="rounded-xl bg-slate-800 p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        Current App Storage
+      </p>
+      <p className="mt-2 font-semibold text-yellow-300">
+        SQLite
+      </p>
+      <p className="mt-2 text-sm text-slate-400">
+        Used for safe local demo persistence.
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-800 p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        Production Database
+      </p>
+      <p className="mt-2 font-semibold text-green-300">
+        Docker PostgreSQL
+      </p>
+      <p className="mt-2 text-sm text-slate-400">
+        Running in a local container for production-style architecture.
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-800 p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        Migration Status
+      </p>
+      <p className="mt-2 font-semibold text-cyan-300">
+        Prepared
+      </p>
+      <p className="mt-2 text-sm text-slate-400">
+        Environment configuration and PostgreSQL health checks are ready.
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-800 p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        Fallback Mode
+      </p>
+      <p className="mt-2 font-semibold text-purple-300">
+        Enabled
+      </p>
+      <p className="mt-2 text-sm text-slate-400">
+        SQLite remains available if PostgreSQL is offline during a demo.
+      </p>
+    </div>
+  </div>
+
+  <div className="mt-6 rounded-xl border border-cyan-500/10 bg-cyan-500/5 p-4">
+    <p className="text-sm font-semibold text-cyan-300">
+      Employer / Marker Explanation
+    </p>
+    <p className="mt-2 text-sm leading-6 text-slate-300">
+      CyberGuard was first built with SQLite for rapid development and demo reliability.
+      It now includes Dockerized PostgreSQL connectivity using environment-based configuration.
+      This allows the system to demonstrate both local fallback resilience and production-style database readiness.
+    </p>
+  </div>
+</section>
       <section className="mt-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
         <h2 className="text-2xl font-bold text-cyan-300">
           Platform Capabilities
