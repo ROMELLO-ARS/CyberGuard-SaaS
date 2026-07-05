@@ -40,6 +40,7 @@ from database import (
     create_ingested_log_in_db,
     get_ingested_logs_from_db,
     get_ingested_log_by_id,
+    get_connection,
     )
 
 
@@ -302,6 +303,207 @@ def postgres_table_status():
             "error": str(error),
         }
     
+@app.post("/postgres/migrate-sqlite")
+def migrate_sqlite_to_postgres():
+    try:
+        sqlite_conn = get_connection()
+        sqlite_cursor = sqlite_conn.cursor()
+
+        postgres_conn = psycopg2.connect(POSTGRES_DATABASE_URL)
+        postgres_cursor = postgres_conn.cursor()
+
+        # Clear PostgreSQL tables first so migration can be safely re-run during demos.
+        postgres_cursor.execute(
+            """
+            TRUNCATE TABLE
+                incident_notes,
+                audit_logs,
+                ingested_logs,
+                incidents
+            RESTART IDENTITY;
+            """
+        )
+
+        # Migrate incidents
+        sqlite_cursor.execute("SELECT * FROM incidents ORDER BY id ASC")
+        incidents = sqlite_cursor.fetchall()
+
+        for incident in incidents:
+            postgres_cursor.execute(
+                """
+                INSERT INTO incidents (
+                    id,
+                    title,
+                    severity,
+                    assigned_to,
+                    status,
+                    source_ip,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    incident["id"],
+                    incident["title"],
+                    incident["severity"],
+                    incident["assigned_to"],
+                    incident["status"],
+                    incident["source_ip"],
+                    incident["created_at"],
+                ),
+            )
+
+        # Migrate incident notes
+        sqlite_cursor.execute("SELECT * FROM incident_notes ORDER BY id ASC")
+        notes = sqlite_cursor.fetchall()
+
+        for note in notes:
+            postgres_cursor.execute(
+                """
+                INSERT INTO incident_notes (
+                    id,
+                    incident_id,
+                    analyst,
+                    note,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    note["id"],
+                    note["incident_id"],
+                    note["analyst"],
+                    note["note"],
+                    note["created_at"],
+                ),
+            )
+
+        # Migrate audit logs
+        sqlite_cursor.execute("SELECT * FROM audit_logs ORDER BY id ASC")
+        audit_logs = sqlite_cursor.fetchall()
+
+        for audit in audit_logs:
+            postgres_cursor.execute(
+                """
+                INSERT INTO audit_logs (
+                    id,
+                    username,
+                    role,
+                    action,
+                    details,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    audit["id"],
+                    audit["username"],
+                    audit["role"],
+                    audit["action"],
+                    audit["details"],
+                    audit["created_at"],
+                ),
+            )
+
+        # Migrate ingested logs
+        sqlite_cursor.execute("SELECT * FROM ingested_logs ORDER BY id ASC")
+        ingested_logs = sqlite_cursor.fetchall()
+
+        for log in ingested_logs:
+            postgres_cursor.execute(
+                """
+                INSERT INTO ingested_logs (
+                    id,
+                    source_type,
+                    event_time,
+                    source_ip,
+                    destination_ip,
+                    event_type,
+                    severity,
+                    message,
+                    raw_log,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    log["id"],
+                    log["source_type"],
+                    log["event_time"],
+                    log["source_ip"],
+                    log["destination_ip"],
+                    log["event_type"],
+                    log["severity"],
+                    log["message"],
+                    log["raw_log"],
+                    log["created_at"],
+                ),
+            )
+
+        # Reset PostgreSQL sequences so future inserts continue after migrated IDs.
+        postgres_cursor.execute(
+            """
+            SELECT setval(
+                pg_get_serial_sequence('incidents', 'id'),
+                COALESCE((SELECT MAX(id) FROM incidents), 1),
+                true
+            );
+            """
+        )
+
+        postgres_cursor.execute(
+            """
+            SELECT setval(
+                pg_get_serial_sequence('incident_notes', 'id'),
+                COALESCE((SELECT MAX(id) FROM incident_notes), 1),
+                true
+            );
+            """
+        )
+
+        postgres_cursor.execute(
+            """
+            SELECT setval(
+                pg_get_serial_sequence('audit_logs', 'id'),
+                COALESCE((SELECT MAX(id) FROM audit_logs), 1),
+                true
+            );
+            """
+        )
+
+        postgres_cursor.execute(
+            """
+            SELECT setval(
+                pg_get_serial_sequence('ingested_logs', 'id'),
+                COALESCE((SELECT MAX(id) FROM ingested_logs), 1),
+                true
+            );
+            """
+        )
+
+        postgres_conn.commit()
+
+        sqlite_conn.close()
+        postgres_cursor.close()
+        postgres_conn.close()
+
+        return {
+            "status": "success",
+            "message": "SQLite data migrated to PostgreSQL successfully.",
+            "migrated": {
+                "incidents": len(incidents),
+                "incident_notes": len(notes),
+                "audit_logs": len(audit_logs),
+                "ingested_logs": len(ingested_logs),
+            },
+        }
+
+    except Exception as error:
+        return {
+            "status": "failed",
+            "message": "SQLite to PostgreSQL migration failed.",
+            "error": str(error),
+        }
 @app.post(
     "/logs/ingest",
     dependencies=[
