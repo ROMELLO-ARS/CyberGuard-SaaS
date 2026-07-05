@@ -1,3 +1,6 @@
+import psycopg2
+from config import POSTGRES_DATABASE_URL
+
 from pathlib import Path
 from reportlab.lib import colors
 from fastapi import Depends, FastAPI, HTTPException
@@ -15,6 +18,8 @@ from reportlab.platypus import (
     TableStyle,
     PageBreak,
 )
+
+
 
 from auth import router as auth_router
 from security import require_roles
@@ -127,6 +132,31 @@ def get_executive_summary(
 )
 def get_logs():
     return get_ingested_logs_from_db()
+
+@app.get("/postgres-test")
+def postgres_test():
+    try:
+        conn = psycopg2.connect(POSTGRES_DATABASE_URL)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT version();")
+        version = cursor.fetchone()[0]
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "status": "connected",
+            "database": "PostgreSQL",
+            "version": version,
+        }
+
+    except Exception as error:
+        return {
+            "status": "failed",
+            "database": "PostgreSQL",
+            "error": str(error),
+        }
 
 
 @app.post(
