@@ -234,6 +234,8 @@ def postgres_init_tables():
                 "ingested_logs",
             ],
         }
+    
+
 
     except Exception as error:
         return {
@@ -242,6 +244,64 @@ def postgres_init_tables():
             "error": str(error),
         }
 
+@app.get("/postgres/table-status")
+def postgres_table_status():
+    try:
+        conn = psycopg2.connect(POSTGRES_DATABASE_URL)
+        cursor = conn.cursor()
+
+        table_names = [
+            "incidents",
+            "incident_notes",
+            "audit_logs",
+            "ingested_logs",
+        ]
+
+        table_status = []
+
+        for table_name in table_names:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                    AND table_name = %s
+                );
+                """,
+                (table_name,),
+            )
+
+            exists = cursor.fetchone()[0]
+            row_count = 0
+
+            if exists:
+                cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
+                row_count = cursor.fetchone()[0]
+
+            table_status.append(
+                {
+                    "table": table_name,
+                    "exists": exists,
+                    "rows": row_count,
+                }
+            )
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "status": "success",
+            "database": "PostgreSQL",
+            "tables": table_status,
+        }
+
+    except Exception as error:
+        return {
+            "status": "failed",
+            "database": "PostgreSQL",
+            "error": str(error),
+        }
+    
 @app.post(
     "/logs/ingest",
     dependencies=[

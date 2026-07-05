@@ -10,6 +10,7 @@ export default function Settings({ showToast }) {
   const [apiStatus, setApiStatus] = useState("Checking...");
   const [apiMessage, setApiMessage] = useState("");
   const [lastChecked, setLastChecked] = useState("");
+  const [postgresTables, setPostgresTables] = useState([]);
 
   async function checkApiHealth() {
     try {
@@ -32,7 +33,9 @@ export default function Settings({ showToast }) {
   useEffect(() => {
   checkApiHealth();
   checkPostgresHealth();
+  checkPostgresTables();
 }, []);
+
 
   async function checkPostgresHealth() {
   try {
@@ -57,6 +60,20 @@ export default function Settings({ showToast }) {
   }
 }
 
+
+async function checkPostgresTables() {
+  try {
+    const response = await api.get("/postgres/table-status");
+
+    if (response.data.status === "success") {
+      setPostgresTables(response.data.tables || []);
+    }
+  } catch (error) {
+    console.error("Failed to check PostgreSQL table status", error);
+    showToast?.("Failed to check PostgreSQL table status.", "error");
+  }
+}
+
   const roleAccess = {
     Administrator: "Full platform access including audit logs, executive reports, incidents, MITRE, settings, and subscriptions.",
     "SOC Analyst": "Operational SOC access including threat queue, incidents, MITRE review, notes, and limited protected-page visibility.",
@@ -65,6 +82,8 @@ export default function Settings({ showToast }) {
   };
 
   return (
+
+    
 
        
     <div>
@@ -90,6 +109,54 @@ export default function Settings({ showToast }) {
   >
     Recheck PostgreSQL
   </button>
+</div>
+
+<div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4">
+  <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+    <div>
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        PostgreSQL Table Status
+      </p>
+      <p className="mt-2 text-sm text-slate-300">
+        Verifies that production database tables exist inside the Docker PostgreSQL container.
+      </p>
+    </div>
+
+    <button
+      onClick={checkPostgresTables}
+      className="rounded-lg border border-cyan-500/30 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/10"
+    >
+      Recheck Tables
+    </button>
+  </div>
+
+  {postgresTables.length === 0 ? (
+    <p className="mt-4 text-sm text-slate-500">
+      No PostgreSQL table status available yet.
+    </p>
+  ) : (
+    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+      {postgresTables.map((table) => (
+        <div key={table.table} className="rounded-xl bg-slate-800 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            {table.table}
+          </p>
+
+          <p
+            className={`mt-2 font-semibold ${
+              table.exists ? "text-green-300" : "text-red-300"
+            }`}
+          >
+            {table.exists ? "Exists" : "Missing"}
+          </p>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Rows: {table.rows}
+          </p>
+        </div>
+      ))}
+    </div>
+  )}
 </div>
       </div>
               <div className="rounded-xl bg-slate-800 p-4">
@@ -254,6 +321,23 @@ export default function Settings({ showToast }) {
           </div>
 
           <div className="rounded-xl bg-slate-800 p-4">
+  <p className="text-xs uppercase tracking-wide text-slate-500">
+    PostgreSQL
+  </p>
+  <p
+    className={`mt-2 font-semibold ${
+      postgresStatus === "Connected"
+        ? "text-green-300"
+        : postgresStatus === "Failed"
+        ? "text-red-300"
+        : "text-yellow-300"
+    }`}
+  >
+    {postgresStatus}
+  </p>
+</div>
+
+          <div className="rounded-xl bg-slate-800 p-4">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Backend
             </p>
@@ -313,7 +397,7 @@ export default function Settings({ showToast }) {
     CyberGuard is currently running in safe hybrid database mode for development and demonstration.
   </p>
 
-  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-5">
     <div className="rounded-xl bg-slate-800 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         Current App Storage
