@@ -5,7 +5,8 @@ export default function Settings({ showToast }) {
   const username = localStorage.getItem("cyberguard_user") || "Unknown";
   const role = localStorage.getItem("cyberguard_role") || "Unknown";
   const token = localStorage.getItem("cyberguard_token");
-
+  const [postgresStatus, setPostgresStatus] = useState("Checking...");
+  const [postgresMessage, setPostgresMessage] = useState("");
   const [apiStatus, setApiStatus] = useState("Checking...");
   const [apiMessage, setApiMessage] = useState("");
   const [lastChecked, setLastChecked] = useState("");
@@ -29,8 +30,32 @@ export default function Settings({ showToast }) {
   }
 
   useEffect(() => {
-    checkApiHealth();
-  }, []);
+  checkApiHealth();
+  checkPostgresHealth();
+}, []);
+
+  async function checkPostgresHealth() {
+  try {
+    setPostgresStatus("Checking...");
+
+    const response = await api.get("/postgres-test");
+
+    if (response.data.status === "connected") {
+      setPostgresStatus("Connected");
+      setPostgresMessage(response.data.version);
+      showToast?.("PostgreSQL connection verified successfully.", "success");
+    } else {
+      setPostgresStatus("Failed");
+      setPostgresMessage(response.data.error || "PostgreSQL connection failed.");
+      showToast?.("PostgreSQL connection failed.", "error");
+    }
+  } catch (error) {
+    console.error("Failed to check PostgreSQL health", error);
+    setPostgresStatus("Failed");
+    setPostgresMessage("Unable to reach PostgreSQL test endpoint.");
+    showToast?.("PostgreSQL health check failed.", "error");
+  }
+}
 
   const roleAccess = {
     Administrator: "Full platform access including audit logs, executive reports, incidents, MITRE, settings, and subscriptions.",
@@ -40,6 +65,8 @@ export default function Settings({ showToast }) {
   };
 
   return (
+
+       
     <div>
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-cyan-400">
@@ -48,8 +75,39 @@ export default function Settings({ showToast }) {
         <p className="mt-2 text-slate-400">
           Manage CyberGuard account, session, API health, and platform security configuration.
         </p>
-      </div>
 
+        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4">
+  <p className="text-xs uppercase tracking-wide text-slate-500">
+    PostgreSQL Health Message
+  </p>
+  <p className="mt-2 break-words text-sm text-slate-300">
+    {postgresMessage || "No PostgreSQL health message available."}
+  </p>
+
+  <button
+    onClick={checkPostgresHealth}
+    className="mt-4 rounded-lg border border-cyan-500/30 px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/10"
+  >
+    Recheck PostgreSQL
+  </button>
+</div>
+      </div>
+              <div className="rounded-xl bg-slate-800 p-4">
+  <p className="text-xs uppercase tracking-wide text-slate-500">
+    PostgreSQL
+  </p>
+  <p
+    className={`mt-2 font-semibold ${
+      postgresStatus === "Connected"
+        ? "text-green-300"
+        : postgresStatus === "Failed"
+        ? "text-red-300"
+        : "text-yellow-300"
+    }`}
+  >
+    {postgresStatus}
+  </p>
+</div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
           <h2 className="text-2xl font-bold text-cyan-300">
