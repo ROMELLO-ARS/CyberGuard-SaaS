@@ -158,6 +158,89 @@ def postgres_test():
             "error": str(error),
         }
 
+@app.post("/postgres/init-tables")
+def postgres_init_tables():
+    try:
+        conn = psycopg2.connect(POSTGRES_DATABASE_URL)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS incidents (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                assigned_to TEXT NOT NULL,
+                status TEXT NOT NULL,
+                source_ip TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS incident_notes (
+                id SERIAL PRIMARY KEY,
+                incident_id INTEGER NOT NULL,
+                analyst TEXT NOT NULL,
+                note TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                role TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ingested_logs (
+                id SERIAL PRIMARY KEY,
+                source_type TEXT NOT NULL,
+                event_time TEXT,
+                source_ip TEXT,
+                destination_ip TEXT,
+                event_type TEXT,
+                severity TEXT,
+                message TEXT NOT NULL,
+                raw_log TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            "status": "success",
+            "message": "PostgreSQL tables initialized successfully.",
+            "tables": [
+                "incidents",
+                "incident_notes",
+                "audit_logs",
+                "ingested_logs",
+            ],
+        }
+
+    except Exception as error:
+        return {
+            "status": "failed",
+            "message": "Failed to initialize PostgreSQL tables.",
+            "error": str(error),
+        }
 
 @app.post(
     "/logs/ingest",
