@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ThreatSimulation from "./pages/ThreatSimulation";
 import {
   Shield,
   LayoutDashboard,
@@ -13,6 +14,7 @@ import {
   DatabaseZap,
   HomeIcon,
   LogOut,
+  Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -72,8 +74,14 @@ const navSections = [
         icon: Target,
         roles: ["Administrator", "SOC Analyst", "SOC Manager"],
       },
+      {
+      label: "Threat Simulation",
+      icon: Zap,
+      roles: ["Administrator", "SOC Analyst", "SOC Manager"],
+},
     ],
   },
+
   {
     title: "Governance",
     items: [
@@ -162,6 +170,8 @@ function App() {
     if (activePage === "Subscription") return <Subscription />;
     if (activePage === "Settings") return <SettingsPage showToast={showToast} />;
     if (activePage === "Demo Guide") return <DemoGuide />;
+    
+    
 
     return <Home setActivePage={setActivePage} />;
   }
