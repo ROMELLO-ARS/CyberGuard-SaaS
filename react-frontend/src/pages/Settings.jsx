@@ -11,6 +11,8 @@ export default function Settings({ showToast }) {
   const [apiMessage, setApiMessage] = useState("");
   const [lastChecked, setLastChecked] = useState("");
   const [postgresTables, setPostgresTables] = useState([]);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState(null);
 
   async function checkApiHealth() {
     try {
@@ -65,12 +67,44 @@ async function checkPostgresTables() {
   try {
     const response = await api.get("/postgres/table-status");
 
+    console.log("PostgreSQL table status response:", response.data);
+
     if (response.data.status === "success") {
       setPostgresTables(response.data.tables || []);
+      showToast?.("PostgreSQL table status refreshed.", "success");
+    } else {
+      showToast?.("PostgreSQL table status check failed.", "error");
     }
   } catch (error) {
     console.error("Failed to check PostgreSQL table status", error);
     showToast?.("Failed to check PostgreSQL table status.", "error");
+  }
+}
+
+async function migrateSQLiteToPostgres() {
+  try {
+    setMigrating(true);
+    setMigrationResult(null);
+
+    const response = await api.post("/postgres/migrate-sqlite");
+
+    if (response.data.status === "success") {
+      setMigrationResult(response.data);
+      showToast?.("SQLite data migrated to PostgreSQL successfully.", "success");
+      await checkPostgresTables();
+    } else {
+      setMigrationResult(response.data);
+      showToast?.("SQLite to PostgreSQL migration failed.", "error");
+    }
+  } catch (error) {
+    console.error("Failed to migrate SQLite to PostgreSQL", error);
+    setMigrationResult({
+      status: "failed",
+      message: "Migration request failed.",
+    });
+    showToast?.("Migration request failed.", "error");
+  } finally {
+    setMigrating(false);
   }
 }
 
@@ -456,6 +490,74 @@ async function checkPostgresTables() {
       It now includes Dockerized PostgreSQL connectivity using environment-based configuration.
       This allows the system to demonstrate both local fallback resilience and production-style database readiness.
     </p>
+
+    <div className="mt-6 rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+    <div>
+      <p className="text-sm font-semibold text-purple-300">
+        SQLite → PostgreSQL Migration
+      </p>
+      <p className="mt-2 text-sm leading-6 text-slate-300">
+        Copies current CyberGuard incidents, analyst notes, audit logs, and ingested logs
+        from SQLite into the Docker PostgreSQL database.
+      </p>
+    </div>
+
+    <button
+      onClick={migrateSQLiteToPostgres}
+      disabled={migrating}
+      className="rounded-lg border border-purple-500/30 px-4 py-2 text-sm font-semibold text-purple-300 hover:bg-purple-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {migrating ? "Migrating..." : "Migrate to PostgreSQL"}
+    </button>
+  </div>
+
+  {migrationResult && (
+    <div className="mt-4 rounded-lg bg-slate-950 p-4">
+      <p
+        className={`text-sm font-semibold ${
+          migrationResult.status === "success"
+            ? "text-green-300"
+            : "text-red-300"
+        }`}
+      >
+        {migrationResult.message}
+      </p>
+
+      {migrationResult.migrated && (
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="rounded-lg bg-slate-800 p-3">
+            <p className="text-xs text-slate-500">Incidents</p>
+            <p className="mt-1 font-bold text-cyan-300">
+              {migrationResult.migrated.incidents}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-slate-800 p-3">
+            <p className="text-xs text-slate-500">Notes</p>
+            <p className="mt-1 font-bold text-cyan-300">
+              {migrationResult.migrated.incident_notes}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-slate-800 p-3">
+            <p className="text-xs text-slate-500">Audit Logs</p>
+            <p className="mt-1 font-bold text-cyan-300">
+              {migrationResult.migrated.audit_logs}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-slate-800 p-3">
+            <p className="text-xs text-slate-500">Ingested Logs</p>
+            <p className="mt-1 font-bold text-cyan-300">
+              {migrationResult.migrated.ingested_logs}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+</div>
   </div>
 </section>
       <section className="mt-8 rounded-2xl border border-cyan-500/20 bg-slate-900 p-6">
