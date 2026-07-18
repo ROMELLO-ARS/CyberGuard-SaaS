@@ -159,23 +159,54 @@ function App() {
   }
 
   function renderPage() {
-    if (activePage === "Home") return <Home setActivePage={setActivePage} />;
-    if (activePage === "Dashboard") return <Dashboard />;
-    if (activePage === "Threat Queue") return <ThreatQueue showToast={showToast} />;
-    if (activePage === "Log Ingestion") return <LogIngestion showToast={showToast} />;
-    if (activePage === "Incidents") return <Incidents showToast={showToast} />;
-    if (activePage === "MITRE Center") return <MitreCenter showToast={showToast} />;
-    if (activePage === "Executive") return <Executive showToast={showToast} />;
-    if (activePage === "Audit Timeline") return <AuditTimeline showToast={showToast} />;
-    if (activePage === "Subscription") return <Subscription />;
-    if (activePage === "Settings") return <SettingsPage showToast={showToast} />;
-    if (activePage === "Demo Guide") return <DemoGuide />;
-    
-    
+  if (activePage === "Home") return <Home setActivePage={setActivePage} />;
 
-    return <Home setActivePage={setActivePage} />;
+  if (activePage === "Dashboard") return <Dashboard />;
+
+  if (activePage === "Threat Queue") {
+    return <ThreatQueue showToast={showToast} />;
   }
 
+  if (activePage === "Log Ingestion") {
+    return <LogIngestion showToast={showToast} />;
+  }
+
+  if (activePage === "Incidents") {
+    return <Incidents showToast={showToast} />;
+  }
+
+  if (activePage === "MITRE Center") {
+    return <MitreCenter showToast={showToast} />;
+  }
+
+  if (activePage === "Threat Simulation") {
+    return <ThreatSimulation showToast={showToast} />;
+  }
+
+  if (activePage === "Executive") {
+    return <Executive showToast={showToast} />;
+  }
+
+  if (activePage === "Audit Timeline") {
+    return <AuditTimeline showToast={showToast} />;
+  }
+
+  if (activePage === "Subscription") {
+    return <Subscription />;
+  }
+
+  if (activePage === "Settings") {
+    return <SettingsPage showToast={showToast} />;
+  }
+
+  if (activePage === "Demo Guide") {
+    return <DemoGuide />;
+  }
+
+  return <Home setActivePage={setActivePage} />;
+}
+    
+    
   const allowedNavItems = useMemo(() => {
     if (!user) return [];
 
