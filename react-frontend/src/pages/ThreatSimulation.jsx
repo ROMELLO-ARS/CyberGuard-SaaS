@@ -111,43 +111,61 @@ export default function ThreatSimulation({ showToast }) {
   const [sending, setSending] = useState(false);
   const [apiResponse, setApiResponse] = useState(null);
   const [lastSentThreat, setLastSentThreat] = useState(null);
+  const [autoCreateIncident, setAutoCreateIncident] = useState(true);
+  const [createdIncident, setCreatedIncident] = useState(null);
 
-  async function sendThreat(threat) {
-    try {
-      setSending(true);
-      setApiResponse(null);
+ async function sendThreat(threat) {
+  try {
+    setSending(true);
+    setApiResponse(null);
+    setCreatedIncident(null);
 
-      const payload = {
-        source_type: threat.source_type,
-        event_time: new Date().toISOString(),
-        source_ip: threat.source_ip,
-        destination_ip: threat.destination_ip,
-        event_type: threat.event_type,
-        severity: threat.severity,
-        message: threat.message,
-        raw_log: threat.raw_log,
-      };
+    const payload = {
+      source_type: threat.source_type,
+      event_time: new Date().toISOString(),
+      source_ip: threat.source_ip,
+      destination_ip: threat.destination_ip,
+      event_type: threat.event_type,
+      severity: threat.severity,
+      message: threat.message,
+      raw_log: threat.raw_log,
+    };
 
-      const response = await api.post("/logs/ingest", payload);
+    const response = await api.post("/logs/ingest", payload);
 
-      setApiResponse(response.data);
-      setLastSentThreat(threat);
+    setApiResponse(response.data);
+    setLastSentThreat(threat);
 
+    const createdLogId = response.data.log_id || response.data.id;
+
+    if (autoCreateIncident && createdLogId) {
+      const incidentResponse = await api.post(
+        `/logs/${createdLogId}/create-incident`
+      );
+
+      setCreatedIncident(incidentResponse.data);
+
+      showToast?.(
+        `${threat.title} sent and incident created automatically.`,
+        "success"
+      );
+    } else {
       showToast?.(`${threat.title} sent to CyberGuard API.`, "success");
-    } catch (error) {
-      console.error("Failed to send threat simulation", error);
-
-      setApiResponse({
-        status: "failed",
-        message: "Threat simulation request failed.",
-        error: error.message,
-      });
-
-      showToast?.("Threat simulation failed.", "error");
-    } finally {
-      setSending(false);
     }
+  } catch (error) {
+    console.error("Failed to send threat simulation", error);
+
+    setApiResponse({
+      status: "failed",
+      message: "Threat simulation request failed.",
+      error: error.message,
+    });
+
+    showToast?.("Threat simulation failed.", "error");
+  } finally {
+    setSending(false);
   }
+}
 
   return (
     <div>
@@ -275,7 +293,15 @@ export default function ThreatSimulation({ showToast }) {
                 </span>
               </div>
             </div>
-
+              <label className="mt-6 flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">
+  <input
+    type="checkbox"
+    checked={autoCreateIncident}
+    onChange={(event) => setAutoCreateIncident(event.target.checked)}
+    className="h-4 w-4 accent-cyan-400"
+  />
+  Auto-create incident after log ingestion
+</label>
             <button
               onClick={() => sendThreat(selectedThreat)}
               disabled={sending}
@@ -346,6 +372,41 @@ export default function ThreatSimulation({ showToast }) {
             <span className="text-cyan-300">Send Threat to API</span>.
           </div>
         )}
+
+        {createdIncident && (
+  <div className="rounded-2xl bg-slate-950 p-5">
+    <p className="text-sm font-semibold text-purple-300">
+      Auto-Created Incident
+    </p>
+
+    <div className="mt-4 space-y-3 text-sm">
+      <p>
+        <span className="text-slate-500">Incident ID:</span>{" "}
+        <span className="text-cyan-300">{createdIncident.id}</span>
+      </p>
+
+      <p>
+        <span className="text-slate-500">Title:</span>{" "}
+        <span className="text-slate-200">{createdIncident.title}</span>
+      </p>
+
+      <p>
+        <span className="text-slate-500">Severity:</span>{" "}
+        <span className="text-slate-200">{createdIncident.severity}</span>
+      </p>
+
+      <p>
+        <span className="text-slate-500">Assigned To:</span>{" "}
+        <span className="text-slate-200">{createdIncident.assigned_to}</span>
+      </p>
+
+      <p>
+        <span className="text-slate-500">Status:</span>{" "}
+        <span className="text-green-300">{createdIncident.status}</span>
+      </p>
+    </div>
+  </div>
+)}
       </section>
 
       <section className="mt-8 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-6">
